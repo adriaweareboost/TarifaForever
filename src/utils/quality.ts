@@ -19,6 +19,45 @@ export function calcQuality(windSpeed: number, windGust: number, waveHeight: num
   return 'poor';
 }
 
+export interface QualityFactor {
+  label: string;
+  value: string;
+  status: 'good' | 'warn' | 'bad';
+}
+
+/** Return individual factor assessments explaining the quality rating */
+export function getQualityFactors(windSpeed: number, windGust: number, waveHeight: number): QualityFactor[] {
+  const factors: QualityFactor[] = [];
+
+  // Wind
+  const goodWind = windSpeed >= MIN_GOOD_WIND && windSpeed <= MAX_GOOD_WIND;
+  const moderateWind = windSpeed >= MIN_MODERATE_WIND && windSpeed <= MAX_MODERATE_WIND;
+  factors.push({
+    label: 'Wind',
+    value: `${windSpeed} kts`,
+    status: goodWind ? 'good' : moderateWind ? 'warn' : 'bad',
+  });
+
+  // Gusts
+  const gustRatio = windSpeed > 0 ? windGust / windSpeed : 0;
+  const safeGust = windGust < windSpeed * MAX_GUST_RATIO;
+  factors.push({
+    label: 'Gusts',
+    value: `${windGust} kts (×${gustRatio.toFixed(1)})`,
+    status: safeGust ? 'good' : 'bad',
+  });
+
+  // Waves
+  const okWaves = waveHeight >= MIN_OK_WAVES && waveHeight <= MAX_OK_WAVES;
+  factors.push({
+    label: 'Waves',
+    value: `${waveHeight}m`,
+    status: okWaves ? 'good' : waveHeight < MIN_OK_WAVES ? 'warn' : 'bad',
+  });
+
+  return factors;
+}
+
 /** Recommend kite size in m² based on wind speed in knots (for ~80kg rider) */
 export function recommendKiteSize(windSpeedKnots: number): string {
   if (windSpeedKnots >= 25) return '7-9';

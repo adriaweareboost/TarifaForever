@@ -50,7 +50,7 @@ export function useWeatherData(activeSpot: SpotConfig) {
     try {
       const [weatherResult, tideResult] = await Promise.all([
         fetchWeatherData(spot),
-        fetchTideData(spot, 5),
+        fetchTideData(spot, 8),
       ]);
       if (!mountedRef.current) return;
       setSpotData(prev => ({

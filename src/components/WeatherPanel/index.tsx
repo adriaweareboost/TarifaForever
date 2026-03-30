@@ -20,7 +20,7 @@ export function WeatherPanel({ data, averages, loading, onRefresh }: WeatherPane
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="section-title">Conditions</h2>
+        <h2 className="section-title">Live Conditions</h2>
         <button
           onClick={onRefresh}
           disabled={loading}
@@ -31,7 +31,7 @@ export function WeatherPanel({ data, averages, loading, onRefresh }: WeatherPane
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* Wind */}
         <div className="metric-card">
           <div className="flex items-center justify-between mb-1">

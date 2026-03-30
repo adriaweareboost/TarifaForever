@@ -64,10 +64,12 @@ export function TidePanel({ tides, source }: TidePanelProps) {
       </div>
 
       {/* Day selector */}
-      <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Tide days">
+      <div className="scroll-fade flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Tide days">
         {tides.map((day, i) => {
           const date = new Date(day.date + 'T00:00:00');
-          const label = i === 0 ? 'Today' : date.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric' });
+          const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+          const dayNum = date.getDate();
+          const label = i === 0 ? 'Today' : `${dayName} ${dayNum}`;
           return (
             <button
               key={day.date}
