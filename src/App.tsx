@@ -66,8 +66,7 @@ function ConditionsAndGear({ weather }: { weather: WeatherData }) {
 
       {/* Gear Recommendation */}
       <div className="metric-card">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-lg">🪁</span>
+        <div className="mb-2">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Gear Recommendation</span>
         </div>
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
