@@ -20,7 +20,7 @@ export function WeatherPanel({ data, averages, loading, onRefresh }: WeatherPane
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="section-title">Conditions</h2>
+        <h2 className="section-title">Live Conditions</h2>
         <button
           onClick={onRefresh}
           disabled={loading}

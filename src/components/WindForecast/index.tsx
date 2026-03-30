@@ -155,23 +155,13 @@ export function WindForecast({ forecasts, waves, loading }: WindForecastProps) {
   return (
     <div className="metric-card">
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="text-sm font-bold text-gray-900">5-Day Forecast</p>
-          <p className="text-[10px] text-gray-400">7-day · Wind (3 models) {hasWaves ? '+ waves' : ''} · kts</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {forecasts.map((f) => (
-            <div key={f.model} className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: f.color }} />
-              <span className="text-[10px] font-semibold text-gray-500">{f.label}</span>
-            </div>
-          ))}
-        </div>
+      <div className="mb-3">
+        <p className="text-sm font-bold text-gray-900">7-Day Forecast</p>
+        <p className="text-[10px] text-gray-400">Wind (3 models) {hasWaves ? '+ waves' : ''} · kts</p>
       </div>
 
       {/* Scrollable grid */}
-      <div className="overflow-x-auto -mx-5 px-5">
+      <div className="scroll-fade overflow-x-auto -mx-5 px-5">
         <div
           className="grid gap-px bg-gray-100 rounded-xl overflow-hidden"
           style={{
