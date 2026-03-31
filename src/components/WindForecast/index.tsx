@@ -161,7 +161,8 @@ export function WindForecast({ forecasts, waves, loading }: WindForecastProps) {
       </div>
 
       {/* Scrollable grid */}
-      <div className="scroll-fade overflow-x-auto -mx-5 px-5">
+      <div className="scroll-fade-wrap -mx-5">
+      <div className="overflow-x-auto px-5">
         <div
           className="grid gap-px bg-gray-100 rounded-xl overflow-hidden"
           style={{
@@ -239,6 +240,7 @@ export function WindForecast({ forecasts, waves, loading }: WindForecastProps) {
             </>
           )}
         </div>
+      </div>
       </div>
 
       {/* ── Wind scale legend ── */}

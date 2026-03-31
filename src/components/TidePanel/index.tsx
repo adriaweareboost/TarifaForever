@@ -64,28 +64,30 @@ export function TidePanel({ tides, source }: TidePanelProps) {
       </div>
 
       {/* Day selector */}
-      <div className="scroll-fade flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Tide days">
-        {tides.map((day, i) => {
-          const date = new Date(day.date + 'T00:00:00');
-          const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-          const dayNum = date.getDate();
-          const label = i === 0 ? 'Today' : `${dayName} ${dayNum}`;
-          return (
-            <button
-              key={day.date}
-              role="tab"
-              aria-selected={selectedDay === i}
-              onClick={() => setSelectedDay(i)}
-              className={`shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-                selectedDay === i
-                  ? 'bg-brand-500 text-white shadow-sm'
-                  : 'bg-white text-gray-500 border border-gray-200 hover:border-brand-300'
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
+      <div className="scroll-fade-wrap scroll-fade-gray">
+        <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Tide days">
+          {tides.map((day, i) => {
+            const date = new Date(day.date + 'T00:00:00');
+            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+            const dayNum = date.getDate();
+            const label = i === 0 ? 'Today' : `${dayName} ${dayNum}`;
+            return (
+              <button
+                key={day.date}
+                role="tab"
+                aria-selected={selectedDay === i}
+                onClick={() => setSelectedDay(i)}
+                className={`shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  selectedDay === i
+                    ? 'bg-brand-500 text-white shadow-sm'
+                    : 'bg-white text-gray-500 border border-gray-200 hover:border-brand-300'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tide events list */}

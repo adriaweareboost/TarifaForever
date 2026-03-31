@@ -9,7 +9,7 @@ import { useWeatherData } from './hooks/useWeatherData';
 import { useActiveSpot } from './hooks/useActiveSpot';
 import { useForecast } from './hooks/useForecast';
 import { WindForecast } from './components/WindForecast';
-import { recommendKiteSize, getQualityFactors } from './utils/quality';
+import { recommendKiteSize, getQualityFactors, type RiderProfile } from './utils/quality';
 import { LOCALE } from './config';
 import type { WeatherData } from './types/weather';
 
@@ -69,14 +69,21 @@ function ConditionsAndGear({ weather }: { weather: WeatherData }) {
         <div className="mb-2">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Gear Recommendation</span>
         </div>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-          <p className="text-[10px] text-emerald-600 font-semibold uppercase">Recommended</p>
-          <p className="text-xl font-extrabold text-gray-900 mt-1">
-            Kite Size: {recommendKiteSize(weather.windSpeed)}m&sup2;
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Based on {weather.windSpeed} kts avg wind for 80kg rider
-          </p>
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            { profile: 'man' as RiderProfile, label: 'Man (~80kg)', icon: '🧔' },
+            { profile: 'woman' as RiderProfile, label: 'Woman (~55kg)', icon: '👩' },
+          ]).map(({ profile, label, icon }) => (
+            <div key={profile} className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+              <p className="text-[10px] text-emerald-600 font-semibold uppercase">{icon} {label}</p>
+              <p className="text-lg font-extrabold text-gray-900 mt-1">
+                {recommendKiteSize(weather.windSpeed, profile)}m&sup2;
+              </p>
+              <p className="text-[10px] text-gray-500 mt-1">
+                {weather.windSpeed} kts wind
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

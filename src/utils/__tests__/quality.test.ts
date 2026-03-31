@@ -28,31 +28,43 @@ describe('calcQuality', () => {
 });
 
 describe('recommendKiteSize', () => {
-  it('recommends 7-9m² for strong wind (25+ knots)', () => {
-    expect(recommendKiteSize(28)).toBe('7-9');
+  describe('man (80kg)', () => {
+    it('recommends 7-9m² for strong wind (25+ knots)', () => {
+      expect(recommendKiteSize(28, 'man')).toBe('7-9');
+    });
+
+    it('recommends 9-11m² for moderate-strong wind (18-24 knots)', () => {
+      expect(recommendKiteSize(20, 'man')).toBe('9-11');
+    });
+
+    it('recommends 11-13m² for moderate wind (12-17 knots)', () => {
+      expect(recommendKiteSize(14, 'man')).toBe('11-13');
+    });
+
+    it('recommends 13+m² for light wind (<12 knots)', () => {
+      expect(recommendKiteSize(8, 'man')).toBe('13+');
+    });
+
+    it('defaults to man profile when no profile given', () => {
+      expect(recommendKiteSize(20)).toBe('9-11');
+    });
   });
 
-  it('recommends 9-11m² for moderate-strong wind (18-24 knots)', () => {
-    expect(recommendKiteSize(20)).toBe('9-11');
-  });
+  describe('woman (55kg)', () => {
+    it('recommends 5-7m² for strong wind (25+ knots)', () => {
+      expect(recommendKiteSize(28, 'woman')).toBe('5-7');
+    });
 
-  it('recommends 11-13m² for moderate wind (12-17 knots)', () => {
-    expect(recommendKiteSize(14)).toBe('11-13');
-  });
+    it('recommends 7-9m² for moderate-strong wind (18-24 knots)', () => {
+      expect(recommendKiteSize(20, 'woman')).toBe('7-9');
+    });
 
-  it('recommends 13+m² for light wind (<12 knots)', () => {
-    expect(recommendKiteSize(8)).toBe('13+');
-  });
+    it('recommends 9-11m² for moderate wind (12-17 knots)', () => {
+      expect(recommendKiteSize(14, 'woman')).toBe('9-11');
+    });
 
-  it('handles boundary at 25 knots', () => {
-    expect(recommendKiteSize(25)).toBe('7-9');
-  });
-
-  it('handles boundary at 18 knots', () => {
-    expect(recommendKiteSize(18)).toBe('9-11');
-  });
-
-  it('handles boundary at 12 knots', () => {
-    expect(recommendKiteSize(12)).toBe('11-13');
+    it('recommends 11-13m² for light wind (<12 knots)', () => {
+      expect(recommendKiteSize(8, 'woman')).toBe('11-13');
+    });
   });
 });
