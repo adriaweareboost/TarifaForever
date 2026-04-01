@@ -5,6 +5,7 @@ import { WeatherPanel } from './components/WeatherPanel';
 import { TidePanel } from './components/TidePanel';
 import { SpotSelector } from './components/SpotSelector';
 import { Layout } from './components/Layout';
+import { CookieConsent } from './components/CookieConsent';
 import { useWeatherData } from './hooks/useWeatherData';
 import { useActiveSpot } from './hooks/useActiveSpot';
 import { useForecast } from './hooks/useForecast';
@@ -96,6 +97,7 @@ function App() {
   const { forecasts, waves, loading: forecastLoading } = useForecast(activeSpot);
 
   return (
+    <>
     <ErrorBoundary fallbackMessage="Tarifa Forever encountered an error. Please refresh the page.">
       <Layout headerRight={<SpotSelector activeSpot={activeSpot} onSelect={setActiveSpot} />}>
         <div className="container mx-auto px-4 py-4 space-y-4 max-w-5xl">
@@ -133,6 +135,8 @@ function App() {
         </div>
       </Layout>
     </ErrorBoundary>
+    <CookieConsent />
+  </>
   );
 }
 

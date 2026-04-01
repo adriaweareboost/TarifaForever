@@ -5,7 +5,8 @@ interface WindCompassProps {
   speed: number;
 }
 
-export function WindCompass({ direction, speed }: WindCompassProps) {
+export function WindCompass({ direction: fromDirection, speed }: WindCompassProps) {
+  const direction = (fromDirection + 180) % 360;
   const cardinals = [
     { label: 'N', angle: 0 },
     { label: 'NE', angle: 45 },

@@ -35,9 +35,10 @@ function cellBg(speed: number): string {
 
 /* ── Direction arrow ── */
 function DirectionArrow({ degrees, size = 14, color = '#64748b' }: { degrees: number; size?: number; color?: string }) {
+  const toDirection = (degrees + 180) % 360;
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" className="shrink-0">
-      <g transform={`rotate(${degrees}, 10, 10)`}>
+      <g transform={`rotate(${toDirection}, 10, 10)`}>
         <line x1="10" y1="4" x2="10" y2="16" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.35" />
         <polygon points="10,2 7,7 10,5 13,7" fill={color} />
       </g>
