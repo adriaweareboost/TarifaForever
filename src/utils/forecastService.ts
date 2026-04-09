@@ -167,8 +167,8 @@ const WRF_9KM: WrfConfig = {
   label: 'WRF 9km',
   description: 'Extended range — next 7 days',
   color: '#7c3aed',
-  forecastDays: '7',
-  cutoffHours: 168,
+  forecastDays: '8',
+  cutoffHours: 192,
   extraParams: { models: 'icon_eu' },
 };
 
@@ -185,11 +185,25 @@ function parseHourlyData(
   const cutoff = new Date(now.getTime() + cutoffHours * 60 * 60 * 1000);
   const hours: ForecastHour[] = [];
 
-  for (let i = 0; i < times.length; i++) {
-    const t = new Date(times[i]);
-    if (t < now || t > cutoff) continue;
-    if (stepHours > 1 && t.getHours() % stepHours !== 0) continue;
-    hours.push(getData(i));
+  if (stepHours === 24) {
+    // Daily mode: pick one entry per day at 12:00 (midday)
+    const seenDates = new Set<string>();
+    for (let i = 0; i < times.length; i++) {
+      const t = new Date(times[i]);
+      if (t < now || t > cutoff) continue;
+      if (t.getHours() !== 12) continue;
+      const dateKey = t.toDateString();
+      if (seenDates.has(dateKey)) continue;
+      seenDates.add(dateKey);
+      hours.push(getData(i));
+    }
+  } else {
+    for (let i = 0; i < times.length; i++) {
+      const t = new Date(times[i]);
+      if (t < now || t > cutoff) continue;
+      if (stepHours > 1 && t.getHours() % stepHours !== 0) continue;
+      hours.push(getData(i));
+    }
   }
 
   return hours;
@@ -296,12 +310,9 @@ export async function fetchWaveForecast(
     const cutoff = new Date(now.getTime() + cutoffHours * 60 * 60 * 1000);
     const hours: WaveForecastHour[] = [];
 
-    for (let i = 0; i < times.length; i++) {
-      const t = new Date(times[i]);
-      if (t < now || t > cutoff) continue;
-      if (stepHours > 1 && t.getHours() % stepHours !== 0) continue;
+    const buildWaveHour = (i: number): WaveForecastHour => {
       const dir = h?.wave_direction?.[i] ?? 0;
-      hours.push({
+      return {
         time: times[i],
         hourLabel: formatHourLabel(times[i]),
         dateLabel: formatDateLabel(times[i]),
@@ -310,7 +321,27 @@ export async function fetchWaveForecast(
         wavePeriod: round1(h?.wave_period?.[i] ?? 0),
         waveDirection: dir,
         waveDirectionLabel: degreesToCompass(dir),
-      });
+      };
+    };
+
+    if (stepHours === 24) {
+      const seenDates = new Set<string>();
+      for (let i = 0; i < times.length; i++) {
+        const t = new Date(times[i]);
+        if (t < now || t > cutoff) continue;
+        if (t.getHours() !== 12) continue;
+        const dateKey = t.toDateString();
+        if (seenDates.has(dateKey)) continue;
+        seenDates.add(dateKey);
+        hours.push(buildWaveHour(i));
+      }
+    } else {
+      for (let i = 0; i < times.length; i++) {
+        const t = new Date(times[i]);
+        if (t < now || t > cutoff) continue;
+        if (stepHours > 1 && t.getHours() % stepHours !== 0) continue;
+        hours.push(buildWaveHour(i));
+      }
     }
 
     return hours;
