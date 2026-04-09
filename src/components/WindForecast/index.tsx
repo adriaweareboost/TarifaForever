@@ -1,7 +1,6 @@
 import React from 'react';
 import type {
-  ModelForecast, ForecastHour, WaveForecastHour,
-  Granularity,
+  ModelForecast, WaveForecastHour, Granularity,
 } from '../../utils/forecastService';
 import { computeDayGroups } from '../../utils/forecastService';
 import { useScrollFade } from '../../hooks/useScrollFade';
@@ -171,7 +170,7 @@ function HourlyGrid({ forecasts, waves, modelLabel, modelDesc }: { forecasts: Mo
             {/* Day groups header */}
             <div className="grid bg-gray-50 border-b border-gray-200" style={{ gridTemplateColumns: `${LABEL_W}px 1fr` }}>
               <div />
-              <div className="grid" style={{ gridTemplateColumns: `repeat(${numHours}, ${CELL_W}px)` }}>
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${numHours}, 1fr)` }}>
                 {dayGroups.map((g) => (
                   <div
                     key={g.startIdx}

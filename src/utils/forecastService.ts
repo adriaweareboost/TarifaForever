@@ -45,55 +45,7 @@ export interface DayGroup {
   count: number;
 }
 
-/* ── Daily (7-day) types ── */
-
-export interface ForecastDay {
-  date: string;
-  dateLabel: string;
-  dayLabel: string;
-  windSpeed: number;
-  windGust: number;
-  windDirection: number;
-  windDirectionLabel: string;
-}
-
-export interface WaveForecastDay {
-  date: string;
-  dateLabel: string;
-  dayLabel: string;
-  waveHeight: number;
-  wavePeriod: number;
-  waveDirection: number;
-  waveDirectionLabel: string;
-}
-
-export interface ModelForecastDaily {
-  model: string;
-  label: string;
-  description: string;
-  color: string;
-  days: ForecastDay[];
-}
-
-interface OpenMeteoDailyResponse {
-  daily?: {
-    time?: string[];
-    wind_speed_10m_max?: number[];
-    wind_gusts_10m_max?: number[];
-    wind_direction_10m_dominant?: number[];
-  };
-}
-
-interface OpenMeteoMarineDailyResponse {
-  daily?: {
-    time?: string[];
-    wave_height_max?: number[];
-    wave_period_max?: number[];
-    wave_direction_dominant?: number[];
-  };
-}
-
-/* ── Hourly (72h) types ── */
+/* ── Hourly types ── */
 
 interface OpenMeteoHourlyResponse {
   hourly?: {
@@ -375,93 +327,10 @@ export function computeDayGroups(hours: ForecastHour[]): DayGroup[] {
 }
 
 /* ══════════════════════════════════════════════════════
-   Daily (7-day) fetch functions
+   Hourly fetch functions
    ══════════════════════════════════════════════════════ */
 
-function formatDailyDateLabel(dateStr: string): string {
-  const [, month, day] = dateStr.split('-');
-  return `${day}/${month}`;
-}
-
-async function fetchModelForecastDaily(
-  spot: SpotConfig,
-  model: typeof MODELS[number],
-): Promise<ModelForecastDaily> {
-  const params = new URLSearchParams({
-    latitude: spot.lat.toString(),
-    longitude: spot.lng.toString(),
-    daily: 'wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant',
-    wind_speed_unit: 'kn',
-    timezone: 'auto',
-    forecast_days: '7',
-    ...('extraParams' in model ? model.extraParams : {}),
-  });
-
-  const res = await fetchWithTimeout(`${model.endpoint}?${params}`);
-  const data: OpenMeteoDailyResponse = await res.json();
-  const d = data.daily;
-
-  const days: ForecastDay[] = (d?.time ?? []).map((date, i) => {
-    const dir = d?.wind_direction_10m_dominant?.[i] ?? 0;
-    return {
-      date,
-      dateLabel: formatDailyDateLabel(date),
-      dayLabel: DAY_NAMES[new Date(date + 'T12:00:00').getDay()],
-      windSpeed: round1(d?.wind_speed_10m_max?.[i] ?? 0),
-      windGust: round1(d?.wind_gusts_10m_max?.[i] ?? 0),
-      windDirection: dir,
-      windDirectionLabel: degreesToCompass(dir),
-    };
-  });
-
-  return { model: model.id, label: model.label, description: model.description, color: model.color, days };
-}
-
-export async function fetchWaveForecastDaily(spot: SpotConfig): Promise<WaveForecastDay[]> {
-  try {
-    const params = new URLSearchParams({
-      latitude: spot.lat.toString(),
-      longitude: spot.lng.toString(),
-      daily: 'wave_height_max,wave_period_max,wave_direction_dominant',
-      timezone: 'auto',
-      forecast_days: '7',
-    });
-
-    const res = await fetchWithTimeout(`https://marine-api.open-meteo.com/v1/marine?${params}`);
-    const data: OpenMeteoMarineDailyResponse = await res.json();
-    const d = data.daily;
-
-    return (d?.time ?? []).map((date, i) => {
-      const dir = d?.wave_direction_dominant?.[i] ?? 0;
-      return {
-        date,
-        dateLabel: formatDailyDateLabel(date),
-        dayLabel: DAY_NAMES[new Date(date + 'T12:00:00').getDay()],
-        waveHeight: round1(d?.wave_height_max?.[i] ?? 0),
-        wavePeriod: round1(d?.wave_period_max?.[i] ?? 0),
-        waveDirection: dir,
-        waveDirectionLabel: degreesToCompass(dir),
-      };
-    });
-  } catch {
-    return [];
-  }
-}
-
-export async function fetchWindForecastDaily(spot: SpotConfig): Promise<ModelForecastDaily[]> {
-  const results = await Promise.allSettled(
-    MODELS.map((m) => fetchModelForecastDaily(spot, m)),
-  );
-  return results
-    .filter((r): r is PromiseFulfilledResult<ModelForecastDaily> => r.status === 'fulfilled')
-    .map((r) => r.value);
-}
-
-/* ══════════════════════════════════════════════════════
-   Hourly (72h) fetch functions
-   ══════════════════════════════════════════════════════ */
-
-/** Fetch 72h wind forecasts from models in parallel */
+/** Fetch 72h wind forecasts (legacy, used by BestMoment) */
 export async function fetchWindForecast(spot: SpotConfig): Promise<ModelForecast[]> {
   const results = await Promise.allSettled(
     MODELS.map((m) => fetchModelForecast(spot, m)),
