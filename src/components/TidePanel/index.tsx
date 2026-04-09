@@ -3,6 +3,7 @@ import type { TideDay } from '../../types/weather';
 import type { TideSource } from '../../hooks/useWeatherData';
 import { LOCALE } from '../../config';
 import { TideChart } from './TideChart';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 interface TidePanelProps {
   tides: TideDay[];
@@ -11,11 +12,13 @@ interface TidePanelProps {
 
 const SOURCE_LABEL: Record<TideSource, string> = {
   noaa: 'NOAA Tides & Currents',
+  'open-meteo': 'Open-Meteo Marine',
   simulated: 'Simulated (harmonic model)',
 };
 
 export function TidePanel({ tides, source }: TidePanelProps) {
   const [selectedDay, setSelectedDay] = useState(0);
+  const { scrollRef, wrapClass } = useScrollFade();
 
   if (!tides.length) return null;
 
@@ -64,8 +67,8 @@ export function TidePanel({ tides, source }: TidePanelProps) {
       </div>
 
       {/* Day selector */}
-      <div className="scroll-fade-wrap scroll-fade-gray">
-        <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Tide days">
+      <div className={`${wrapClass} scroll-fade-gray`}>
+        <div ref={scrollRef} className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Tide days">
           {tides.map((day, i) => {
             const date = new Date(day.date + 'T00:00:00');
             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });

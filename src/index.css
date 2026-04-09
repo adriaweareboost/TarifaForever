@@ -23,16 +23,30 @@
     position: relative;
     overflow: hidden;
   }
+  .scroll-fade-wrap::before,
   .scroll-fade-wrap::after {
     content: '';
     position: absolute;
     top: 0;
-    right: 0;
     bottom: 0;
     width: 40px;
-    background: linear-gradient(to right, transparent, white);
     pointer-events: none;
     z-index: 1;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .scroll-fade-wrap::before {
+    left: 0;
+    background: linear-gradient(to left, transparent, white);
+  }
+  .scroll-fade-wrap::after {
+    right: 0;
+    background: linear-gradient(to right, transparent, white);
+  }
+  .scroll-fade-wrap.fade-left::before { opacity: 1; }
+  .scroll-fade-wrap.fade-right::after { opacity: 1; }
+  .scroll-fade-wrap.scroll-fade-gray::before {
+    background: linear-gradient(to left, transparent, rgb(249 250 251));
   }
   .scroll-fade-wrap.scroll-fade-gray::after {
     background: linear-gradient(to right, transparent, rgb(249 250 251));

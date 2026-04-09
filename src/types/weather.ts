@@ -27,9 +27,15 @@ export interface TidePoint {
   type: TideType;
 }
 
+export interface TideHourly {
+  time: Date;
+  height: number;
+}
+
 export interface TideDay {
   date: string;      // ISO date string YYYY-MM-DD
   points: TidePoint[];
+  hourly?: TideHourly[]; // Raw hourly sea level data for accurate chart rendering
 }
 
 export interface SpotData {

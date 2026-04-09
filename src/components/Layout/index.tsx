@@ -14,9 +14,9 @@ export function Layout({ children, headerRight }: LayoutProps) {
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Wind className="w-6 h-6 text-brand-500" strokeWidth={2.5} />
-            <span className="text-xl font-extrabold tracking-tight text-gray-900">
+            <h1 className="text-xl font-extrabold tracking-tight text-gray-900">
               Tarifa<span className="text-brand-500">Forever</span>
-            </span>
+            </h1>
           </div>
           {headerRight && <div>{headerRight}</div>}
         </div>

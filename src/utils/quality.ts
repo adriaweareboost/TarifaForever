@@ -58,28 +58,60 @@ export function getQualityFactors(windSpeed: number, windGust: number, waveHeigh
   return factors;
 }
 
-export type RiderProfile = 'man' | 'woman';
+export type WeightRange = '45-60' | '60-75' | '75-90' | '90+';
 
-const KITE_RANGES: Record<RiderProfile, { min: number; size: string }[]> = {
-  man: [
-    { min: 25, size: '7-9' },
-    { min: 18, size: '9-11' },
-    { min: 12, size: '11-13' },
-    { min: 0, size: '13+' },
+export const WEIGHT_PROFILES: { id: WeightRange; label: string }[] = [
+  { id: '45-60', label: '45-60 kg' },
+  { id: '60-75', label: '60-75 kg' },
+  { id: '75-90', label: '75-90 kg' },
+  { id: '90+', label: '90+ kg' },
+];
+
+const KITE_RANGES: Record<WeightRange, { min: number; size: string }[]> = {
+  '45-60': [
+    { min: 35, size: '4' },
+    { min: 28, size: '5' },
+    { min: 22, size: '6' },
+    { min: 18, size: '8' },
+    { min: 15, size: '9' },
+    { min: 12, size: '11' },
+    { min: 10, size: '13' },
+    { min: 0, size: '' },
   ],
-  woman: [
-    { min: 25, size: '5-7' },
-    { min: 18, size: '7-9' },
-    { min: 12, size: '9-11' },
-    { min: 0, size: '11-13' },
+  '60-75': [
+    { min: 35, size: '5' },
+    { min: 28, size: '6' },
+    { min: 22, size: '8' },
+    { min: 18, size: '9' },
+    { min: 15, size: '11' },
+    { min: 12, size: '13' },
+    { min: 10, size: '16' },
+    { min: 0, size: '' },
+  ],
+  '75-90': [
+    { min: 35, size: '6' },
+    { min: 28, size: '8' },
+    { min: 22, size: '9' },
+    { min: 18, size: '11' },
+    { min: 15, size: '13' },
+    { min: 12, size: '16' },
+    { min: 0, size: '' },
+  ],
+  '90+': [
+    { min: 35, size: '8' },
+    { min: 28, size: '9' },
+    { min: 22, size: '11' },
+    { min: 18, size: '13' },
+    { min: 15, size: '16' },
+    { min: 0, size: '' },
   ],
 };
 
-/** Recommend kite size in m² based on wind speed and rider profile */
-export function recommendKiteSize(windSpeedKnots: number, profile: RiderProfile = 'man'): string {
-  const ranges = KITE_RANGES[profile];
+/** Recommend kite size in m² based on wind speed and weight range */
+export function recommendKiteSize(windSpeedKnots: number, weight: WeightRange = '75-90'): string {
+  const ranges = KITE_RANGES[weight];
   for (const range of ranges) {
-    if (windSpeedKnots >= range.min) return range.size;
+    if (windSpeedKnots >= range.min) return range.size || 'Not enough wind';
   }
-  return ranges[ranges.length - 1].size;
+  return 'Not enough wind';
 }

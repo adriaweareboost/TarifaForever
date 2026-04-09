@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { SpotData, WeatherAverages } from '../types/weather';
 import type { SpotConfig } from '../config';
 import { WEATHER_REFRESH_INTERVAL_MS } from '../config';
-import { fetchWeatherData } from '../utils/weatherService';
+import { fetchWeatherData, type WeatherSource } from '../utils/weatherService';
 import { fetchTideData } from '../utils/tideService';
 import { computeAverages } from '../utils/averages';
 
@@ -23,7 +23,7 @@ function buildInitialSpot(spot: SpotConfig): SpotData {
   };
 }
 
-export type TideSource = 'noaa' | 'simulated';
+export type TideSource = 'noaa' | 'open-meteo' | 'simulated';
 
 export function useWeatherData(activeSpot: SpotConfig) {
   const [spotData, setSpotData] = useState<SpotData>(() => buildInitialSpot(activeSpot));
@@ -31,6 +31,7 @@ export function useWeatherData(activeSpot: SpotConfig) {
   const [error, setError] = useState<string | null>(null);
   const [averages, setAverages] = useState<WeatherAverages | null>(null);
   const [tideSource, setTideSource] = useState<TideSource>('simulated');
+  const [weatherSource, setWeatherSource] = useState<WeatherSource>('open-meteo');
   const mountedRef = useRef(true);
   const spotRef = useRef(activeSpot);
 
@@ -60,6 +61,7 @@ export function useWeatherData(activeSpot: SpotConfig) {
         tides: tideResult.tides,
       }));
       setAverages(computeAverages(weatherResult.history));
+      setWeatherSource(weatherResult.source);
       setTideSource(tideResult.source);
     } catch (err) {
       if (!mountedRef.current) return;
@@ -79,5 +81,5 @@ export function useWeatherData(activeSpot: SpotConfig) {
     };
   }, [activeSpot.id, refreshData]);
 
-  return { spotData, loading, error, refreshData, averages, tideSource };
+  return { spotData, loading, error, refreshData, averages, tideSource, weatherSource };
 }

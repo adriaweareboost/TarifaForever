@@ -6,67 +6,65 @@ interface TideChartProps {
 }
 
 export function TideChart({ day }: TideChartProps) {
-  if (!day.points.length) return <p className="text-sm text-gray-400 text-center py-4">No tide data</p>;
+  if (!day.points.length && !day.hourly?.length) {
+    return <p className="text-sm text-gray-400 text-center py-4">No tide data</p>;
+  }
 
-  // Generate smooth curve from tide points across 24h
   const W = 320;
-  const H = 100;
+  const H = 120;
   const PAD_X = 30;
-  const PAD_Y = 15;
+  const PAD_Y = 20;
   const chartW = W - PAD_X * 2;
   const chartH = H - PAD_Y * 2;
 
-  // Find min/max heights
-  const heights = day.points.map(p => p.height);
-  const minH = Math.min(...heights) - 0.1;
-  const maxH = Math.max(...heights) + 0.1;
+  // Use real hourly data if available, otherwise fall back to peak points
+  const hourly = day.hourly ?? [];
+  const allHeights: number[] = [
+    ...hourly.map(h => h.height),
+    ...day.points.map(p => p.height),
+  ];
+
+  const minH = Math.min(...allHeights) - 0.05;
+  const maxH = Math.max(...allHeights) + 0.05;
   const rangeH = maxH - minH || 1;
 
-  // Convert tide points to coordinates
-  const coords = day.points.map(p => {
-    const t = new Date(p.time);
-    const minutes = t.getHours() * 60 + t.getMinutes();
+  // Helper: convert a time + height to SVG coordinates
+  const toXY = (time: Date, height: number) => {
+    const minutes = time.getHours() * 60 + time.getMinutes();
     const x = PAD_X + (minutes / 1440) * chartW;
-    const y = PAD_Y + chartH - ((p.height - minH) / rangeH) * chartH;
-    return { x, y, point: p, time: t };
-  });
+    const y = PAD_Y + chartH - ((height - minH) / rangeH) * chartH;
+    return { x, y };
+  };
 
-  // Build smooth SVG path using cubic bezier
+  // Build smooth curve from hourly data (real tide curve)
   let pathD = '';
-  if (coords.length >= 2) {
-    // Add virtual start/end points for smooth curve
-    const allCoords = [
-      { x: PAD_X, y: coords[0].y + (coords[0].y - (coords[1]?.y ?? coords[0].y)) * 0.3 },
-      ...coords,
-      { x: PAD_X + chartW, y: coords[coords.length - 1].y },
-    ];
-
-    pathD = `M ${allCoords[0].x} ${allCoords[0].y}`;
-    for (let i = 0; i < allCoords.length - 1; i++) {
-      const p0 = allCoords[Math.max(0, i - 1)];
-      const p1 = allCoords[i];
-      const p2 = allCoords[i + 1];
-      const p3 = allCoords[Math.min(allCoords.length - 1, i + 2)];
-
-      const cp1x = p1.x + (p2.x - p0.x) / 6;
-      const cp1y = p1.y + (p2.y - p0.y) / 6;
-      const cp2x = p2.x - (p3.x - p1.x) / 6;
-      const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-      pathD += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+  if (hourly.length >= 2) {
+    const coords = hourly.map(h => toXY(h.time, h.height));
+    pathD = `M ${coords[0].x} ${coords[0].y}`;
+    for (let i = 1; i < coords.length; i++) {
+      const prev = coords[i - 1];
+      const curr = coords[i];
+      const cx = (prev.x + curr.x) / 2;
+      pathD += ` Q ${prev.x},${prev.y} ${cx},${(prev.y + curr.y) / 2}`;
+      pathD += ` T ${curr.x},${curr.y}`;
     }
   }
 
+  // Peak markers (high/low)
+  const peakCoords = day.points.map(p => ({
+    ...toXY(p.time, p.height),
+    point: p,
+  }));
+
   // Current time marker
   const now = new Date();
-  const nowDate = day.date;
   const todayStr = new Date().toISOString().split('T')[0];
-  const isToday = nowDate === todayStr;
+  const isToday = day.date === todayStr;
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const nowX = PAD_X + (nowMinutes / 1440) * chartW;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 140 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 160 }}>
       {/* Grid lines */}
       {[0, 6, 12, 18, 24].map(hour => {
         const x = PAD_X + (hour / 24) * chartW;
@@ -94,21 +92,67 @@ export function TideChart({ day }: TideChartProps) {
         <path d={pathD} fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" />
       )}
 
-      {/* Tide point markers */}
-      {coords.map((c, i) => (
-        <g key={i}>
-          <circle cx={c.x} cy={c.y} r="3" fill={c.point.type === 'high' ? '#3b82f6' : '#f59e0b'} />
-          <text x={c.x} y={c.y - 7} textAnchor="middle" fontSize="7" fontWeight="bold"
-            className={c.point.type === 'high' ? 'fill-blue-500' : 'fill-amber-500'}>
-            {c.point.height}m
-          </text>
-        </g>
-      ))}
+      {/* Peak markers */}
+      {peakCoords.map((c, i) => {
+        const timeStr = c.point.time.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        return (
+          <g key={i}>
+            <circle cx={c.x} cy={c.y} r="3" fill={c.point.type === 'high' ? '#3b82f6' : '#f59e0b'} />
+            <text
+              x={c.x}
+              y={c.point.type === 'high' ? c.y - 13 : c.y + 12}
+              textAnchor="middle"
+              fontSize="7"
+              fontWeight="bold"
+              className={c.point.type === 'high' ? 'fill-blue-500' : 'fill-amber-500'}
+            >
+              {timeStr}
+            </text>
+            <text
+              x={c.x}
+              y={c.point.type === 'high' ? c.y - 6 : c.y + 19}
+              textAnchor="middle"
+              fontSize="7"
+              fontWeight="bold"
+              className={c.point.type === 'high' ? 'fill-blue-500' : 'fill-amber-500'}
+            >
+              {c.point.height}m
+            </text>
+          </g>
+        );
+      })}
 
       {/* Current time line */}
       {isToday && (
-        <line x1={nowX} y1={PAD_Y} x2={nowX} y2={H - PAD_Y}
-          stroke="#ef4444" strokeWidth="1.5" strokeDasharray="3 2" />
+        <g>
+          <line
+            x1={nowX}
+            y1={PAD_Y}
+            x2={nowX}
+            y2={H - PAD_Y}
+            stroke="#ef4444"
+            strokeWidth="2"
+            strokeDasharray="4 3"
+          />
+          <rect
+            x={nowX - 12}
+            y={PAD_Y - 11}
+            width="24"
+            height="11"
+            rx="2"
+            fill="#ef4444"
+          />
+          <text
+            x={nowX}
+            y={PAD_Y - 3}
+            textAnchor="middle"
+            fontSize="7"
+            fontWeight="bold"
+            fill="#ffffff"
+          >
+            NOW
+          </text>
+        </g>
       )}
 
       {/* Gradient definition */}

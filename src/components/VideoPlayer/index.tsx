@@ -36,18 +36,27 @@ export function VideoPlayer({ twitchChannel, spotName, spotLocation, className =
   const containerRef = useRef<HTMLDivElement>(null);
   const embedRef = useRef<TwitchEmbedInstance | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [sdkReady, setSdkReady] = useState(!!window.Twitch?.Embed);
+
+  // Wait for async Twitch SDK
+  useEffect(() => {
+    if (sdkReady) return;
+    const timer = setInterval(() => {
+      if (window.Twitch?.Embed) {
+        setSdkReady(true);
+        clearInterval(timer);
+      }
+    }, 300);
+    return () => clearInterval(timer);
+  }, [sdkReady]);
 
   useEffect(() => {
     embedRef.current = null;
     setIsPlaying(false);
 
-    if (!containerRef.current) return;
+    if (!containerRef.current || !sdkReady) return;
 
-    const TwitchEmbed = window.Twitch?.Embed;
-    if (!TwitchEmbed) {
-      console.warn('[TarifaForever] Twitch Embed SDK not loaded');
-      return;
-    }
+    const TwitchEmbed = window.Twitch!.Embed;
 
     containerRef.current.innerHTML = '';
     const parent = window.location.hostname;
@@ -75,7 +84,7 @@ export function VideoPlayer({ twitchChannel, spotName, spotLocation, className =
     });
 
     embedRef.current = embed;
-  }, [twitchChannel]);
+  }, [twitchChannel, sdkReady]);
 
   return (
     <div className={`relative rounded-2xl overflow-hidden shadow-md ${className}`}>

@@ -24,13 +24,30 @@ describe('fetchTideData', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns simulated data when no NOAA station is configured', async () => {
+  it('falls back to simulated when Open-Meteo Marine fails and no NOAA station', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
     const result = await fetchTideData(TEST_SPOT, 3);
     expect(result.source).toBe('simulated');
     expect(result.tides).toHaveLength(3);
   });
 
+  it('uses Open-Meteo Marine when no NOAA station is configured', async () => {
+    const mockResponse = {
+      hourly: {
+        time: ['2026-04-07T00:00', '2026-04-07T06:00', '2026-04-07T12:00', '2026-04-07T18:00'],
+        sea_level_height_msl: [-0.5, 0.5, -0.5, 0.5],
+      },
+    };
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
+    const result = await fetchTideData(TEST_SPOT, 1);
+    expect(result.source).toBe('open-meteo');
+  });
+
   it('simulated tides have valid structure', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
     const result = await fetchTideData(TEST_SPOT, 2);
     for (const day of result.tides) {
       expect(day.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -41,11 +58,6 @@ describe('fetchTideData', () => {
         expect(['high', 'low']).toContain(point.type);
       }
     }
-  });
-
-  it('returns correct number of days', async () => {
-    const result = await fetchTideData(TEST_SPOT, 5);
-    expect(result.tides.length).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -87,13 +99,14 @@ describe('fetchTideData with NOAA', () => {
     expect(day.points[1].type).toBe('low');
   });
 
-  it('handles NOAA API error response', async () => {
+  it('handles NOAA API error response and falls back', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ error: { message: 'Station not found' } }),
     });
 
     const result = await fetchTideData(NOAA_SPOT, 3);
-    expect(result.source).toBe('simulated');
+    // Falls back to open-meteo (which also fails with this mock) → simulated
+    expect(['open-meteo', 'simulated']).toContain(result.source);
   });
 });

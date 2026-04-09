@@ -1,276 +1,447 @@
 import React from 'react';
-import type { ModelForecast, ForecastDay, WaveForecastDay } from '../../utils/forecastService';
+import type {
+  ModelForecast, ForecastHour, WaveForecastHour,
+  Granularity,
+} from '../../utils/forecastService';
+import { computeDayGroups } from '../../utils/forecastService';
+import { useScrollFade } from '../../hooks/useScrollFade';
 
 interface WindForecastProps {
-  forecasts: ModelForecast[];
-  waves: WaveForecastDay[];
+  granularity: Granularity;
+  onGranularityChange: (g: Granularity) => void;
+  forecast1km: ModelForecast | null;
+  forecast3km: ModelForecast | null;
+  forecast9km: ModelForecast | null;
+  waves1km: WaveForecastHour[];
+  waves3km: WaveForecastHour[];
+  waves9km: WaveForecastHour[];
   loading: boolean;
 }
 
-/* ── Wind intensity thresholds (kts) ── */
-const WIND_RANGES = [
-  { max: 8,  label: 'Light',     bg: 'bg-gray-100',    text: 'text-gray-400' },
-  { max: 14, label: 'Moderate',  bg: 'bg-emerald-50',  text: 'text-emerald-600' },
-  { max: 22, label: 'Good kite', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  { max: 30, label: 'Strong',    bg: 'bg-amber-50',    text: 'text-amber-600' },
-  { max: 45, label: 'Extreme',   bg: 'bg-red-50',      text: 'text-red-600' },
-  { max: Infinity, label: 'Danger', bg: 'bg-red-100',  text: 'text-red-700' },
-] as const;
+/* ── Windguru-style color scale (kts) ── */
+const WG_STOPS: [number, string][] = [
+  [0,  '#ffffff'],
+  [2,  '#f0f4ff'],
+  [5,  '#c5d9fc'],
+  [8,  '#8ec3f7'],
+  [12, '#59d4b0'],
+  [16, '#6ade6a'],
+  [20, '#c2f05a'],
+  [25, '#f7f056'],
+  [30, '#f7b84e'],
+  [35, '#f26a38'],
+  [40, '#e03030'],
+  [50, '#b01080'],
+];
 
-function getWindRange(speed: number) {
-  return WIND_RANGES.find((r) => speed <= r.max) ?? WIND_RANGES[WIND_RANGES.length - 1];
+const WIND_LEGEND = [
+  { max: 8,  label: 'Light',     color: '#8ec3f7' },
+  { max: 16, label: 'Moderate',  color: '#6ade6a' },
+  { max: 25, label: 'Good kite', color: '#f7f056' },
+  { max: 35, label: 'Strong',    color: '#f26a38' },
+  { max: 50, label: 'Extreme',   color: '#e03030' },
+];
+
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-function windColor(speed: number): string {
-  if (speed <= 8) return '#9ca3af';
-  if (speed <= 14) return '#059669';
-  if (speed <= 22) return '#047857';
-  if (speed <= 30) return '#d97706';
-  return '#dc2626';
+function interpolateColor(speed: number): string {
+  if (speed <= WG_STOPS[0][0]) return WG_STOPS[0][1];
+  if (speed >= WG_STOPS[WG_STOPS.length - 1][0]) return WG_STOPS[WG_STOPS.length - 1][1];
+  for (let i = 0; i < WG_STOPS.length - 1; i++) {
+    const [s0, c0] = WG_STOPS[i];
+    const [s1, c1] = WG_STOPS[i + 1];
+    if (speed >= s0 && speed <= s1) {
+      const t = (speed - s0) / (s1 - s0);
+      const [r0, g0, b0] = hexToRgb(c0);
+      const [r1, g1, b1] = hexToRgb(c1);
+      return `rgb(${Math.round(r0 + (r1 - r0) * t)},${Math.round(g0 + (g1 - g0) * t)},${Math.round(b0 + (b1 - b0) * t)})`;
+    }
+  }
+  return WG_STOPS[WG_STOPS.length - 1][1];
 }
 
-function cellBg(speed: number): string {
-  return getWindRange(speed).bg;
+function cellBgStyle(speed: number): React.CSSProperties {
+  return { backgroundColor: interpolateColor(speed) };
 }
 
-/* ── Direction arrow ── */
-function DirectionArrow({ degrees, size = 14, color = '#64748b' }: { degrees: number; size?: number; color?: string }) {
-  const toDirection = (degrees + 180) % 360;
+/** Temperature color scale */
+function tempBgStyle(temp: number): React.CSSProperties {
+  if (temp <= 5) return { backgroundColor: '#dbeafe' };
+  if (temp <= 10) return { backgroundColor: '#bfdbfe' };
+  if (temp <= 15) return { backgroundColor: '#e0f2fe' };
+  if (temp <= 20) return { backgroundColor: '#ecfdf5' };
+  if (temp <= 25) return { backgroundColor: '#fef9c3' };
+  if (temp <= 30) return { backgroundColor: '#fed7aa' };
+  if (temp <= 35) return { backgroundColor: '#fca5a5' };
+  return { backgroundColor: '#ef4444' };
+}
+
+/** Cloud cover color scale (0-100%) — darker = more clouds */
+function cloudBgStyle(pct: number): React.CSSProperties {
+  if (pct <= 10) return { backgroundColor: '#ffffff' };
+  if (pct <= 30) return { backgroundColor: '#f3f4f6' };
+  if (pct <= 50) return { backgroundColor: '#e5e7eb' };
+  if (pct <= 70) return { backgroundColor: '#d1d5db' };
+  if (pct <= 90) return { backgroundColor: '#9ca3af' };
+  return { backgroundColor: '#6b7280' };
+}
+
+/** Precipitation color scale (mm) */
+function precipBgStyle(mm: number): React.CSSProperties {
+  if (mm <= 0) return { backgroundColor: '#ffffff' };
+  if (mm <= 0.5) return { backgroundColor: '#dbeafe' };
+  if (mm <= 2) return { backgroundColor: '#93c5fd' };
+  if (mm <= 5) return { backgroundColor: '#3b82f6' };
+  if (mm <= 10) return { backgroundColor: '#1d4ed8' };
+  return { backgroundColor: '#1e3a8a' };
+}
+
+/** Wave color scale */
+function waveBgStyle(height: number): React.CSSProperties {
+  if (height <= 0.3) return { backgroundColor: '#ffffff' };
+  if (height <= 0.6) return { backgroundColor: '#dbeafe' };
+  if (height <= 1.0) return { backgroundColor: '#bfdbfe' };
+  if (height <= 1.5) return { backgroundColor: '#93c5fd' };
+  if (height <= 2.0) return { backgroundColor: '#60a5fa' };
+  if (height <= 3.0) return { backgroundColor: '#f97316' };
+  return { backgroundColor: '#dc2626' };
+}
+
+/* ── Direction arrow (points TO wind destination) ── */
+function DirectionArrow({ degrees, size = 12 }: { degrees: number; size?: number }) {
+  const toDir = (degrees + 180) % 360;
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" className="shrink-0">
-      <g transform={`rotate(${toDirection}, 10, 10)`}>
-        <line x1="10" y1="4" x2="10" y2="16" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.35" />
-        <polygon points="10,2 7,7 10,5 13,7" fill={color} />
+    <svg width={size} height={size} viewBox="0 0 20 20" className="shrink-0 inline-block">
+      <g transform={`rotate(${toDir}, 10, 10)`}>
+        <line x1="10" y1="4" x2="10" y2="16" stroke="#1f2937" strokeWidth="2" strokeLinecap="round" />
+        <polygon points="10,2 6,7 10,5 14,7" fill="#1f2937" />
       </g>
     </svg>
   );
 }
 
-/* ── Mini bar ── */
-const BAR_MAX = 45;
-
-function MiniBar({ speed, gust, color }: { speed: number; gust: number; color: string }) {
-  const speedPct = Math.min((speed / BAR_MAX) * 100, 100);
-  const gustPct = Math.min((gust / BAR_MAX) * 100, 100);
-
+/* ── Granularity selector ── */
+function GranularitySelector({ value, onChange }: { value: Granularity; onChange: (g: Granularity) => void }) {
+  const options: Granularity[] = [1, 3, 6, 12, 24];
   return (
-    <div className="relative h-1 rounded-full bg-gray-100 overflow-hidden w-full mt-0.5">
-      <div className="absolute inset-y-0 left-0 rounded-full opacity-20" style={{ width: `${gustPct}%`, backgroundColor: color }} />
-      <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${speedPct}%`, backgroundColor: color }} />
+    <div className="flex bg-gray-100 rounded-lg p-0.5">
+      {options.map((g) => (
+        <button
+          key={g}
+          onClick={() => onChange(g)}
+          className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-colors whitespace-nowrap ${
+            value === g ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          {g}h
+        </button>
+      ))}
     </div>
   );
 }
 
-/* ── Wind model cell ── */
-function ModelCell({ day, model }: { day: ForecastDay | undefined; model: ModelForecast }) {
-  if (!day) return <div className="text-[10px] text-gray-300 text-center py-2">—</div>;
 
-  const wColor = windColor(day.windSpeed);
+/* ══════════════════════════════════════════════════════
+   72h Hourly Grid — Windguru style
+   ══════════════════════════════════════════════════════ */
+
+function HourlyGrid({ forecasts, waves, modelLabel, modelDesc }: { forecasts: ModelForecast[]; waves: WaveForecastHour[]; modelLabel?: string; modelDesc?: string }) {
+  const { scrollRef, wrapClass } = useScrollFade();
+  if (forecasts.length === 0) return <EmptyState />;
+
+  const hours = forecasts[0].hours;
+  const numHours = hours.length;
+  const hasWaves = waves.length > 0;
+  const dayGroups = computeDayGroups(hours);
+
+  const LABEL_W = 72;
+  const CELL_W = 38;
 
   return (
-    <div className="flex flex-col items-center gap-0.5 py-1.5">
-      <div className="flex items-baseline gap-0.5">
-        <span className="text-sm font-bold tabular-nums leading-none" style={{ color: wColor }}>{day.windSpeed}</span>
-        <span className="text-[9px] text-gray-400 leading-none">/{day.windGust}</span>
+    <>
+      <div className={`${wrapClass} -mx-5`}>
+        <div ref={scrollRef} className="overflow-x-auto px-5">
+          <div
+            className="rounded-lg overflow-hidden border border-gray-200"
+            style={{ minWidth: `${numHours * CELL_W + LABEL_W}px` }}
+          >
+            {/* Day groups header */}
+            <div className="grid bg-gray-50 border-b border-gray-200" style={{ gridTemplateColumns: `${LABEL_W}px 1fr` }}>
+              <div />
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${numHours}, ${CELL_W}px)` }}>
+                {dayGroups.map((g) => (
+                  <div
+                    key={g.startIdx}
+                    className="text-center text-[11px] font-bold text-gray-700 py-1 border-l border-gray-200"
+                    style={{ gridColumn: `span ${g.count}` }}
+                  >
+                    {g.label === 'Today' ? 'Today' : g.label} <span className="text-gray-400 font-normal">{g.dateLabel}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Hour row */}
+            <Row label="" cells={hours.map((h) => {
+              const hr = new Date(h.time).getHours();
+              const isNight = hr < 6 || hr >= 22;
+              return (
+                <div key={h.time} className={`text-center text-[10px] font-semibold ${isNight ? 'text-gray-400' : 'text-gray-700'}`}>
+                  {hr}h
+                </div>
+              );
+            })} bg="bg-gray-50" borderBottom />
+
+            {/* Wind speed */}
+            <Row label="Wind (kts)" cells={hours.map((h) => (
+              <div
+                key={h.time}
+                className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center"
+                style={cellBgStyle(h.windSpeed)}
+              >
+                {h.windSpeed}
+              </div>
+            ))} />
+
+            {/* Gusts */}
+            <Row label="Gusts (kts)" cells={hours.map((h) => (
+              <div
+                key={h.time}
+                className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center"
+                style={cellBgStyle(h.windGust)}
+              >
+                {h.windGust}
+              </div>
+            ))} />
+
+            {/* Direction */}
+            <Row label="Direction" cells={hours.map((h) => (
+              <div key={h.time} className="bg-white flex items-center justify-center h-full">
+                <DirectionArrow degrees={h.windDirection} />
+              </div>
+            ))} />
+
+            {/* Temperature */}
+            <Row label="Temp (°C)" cells={hours.map((h) => (
+              <div
+                key={h.time}
+                className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center"
+                style={tempBgStyle(h.temperature)}
+              >
+                {h.temperature}
+              </div>
+            ))} />
+
+            {/* Cloud cover */}
+            <Row label="Cld Hi %" cells={hours.map((h) => (
+              <div
+                key={h.time}
+                className="text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center"
+                style={cloudBgStyle(h.cloudHigh)}
+              >
+                {h.cloudHigh}
+              </div>
+            ))} />
+
+            <Row label="Cld Mid %" cells={hours.map((h) => (
+              <div
+                key={h.time}
+                className="text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center"
+                style={cloudBgStyle(h.cloudMid)}
+              >
+                {h.cloudMid}
+              </div>
+            ))} />
+
+            <Row label="Cld Lo %" cells={hours.map((h) => (
+              <div
+                key={h.time}
+                className="text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center"
+                style={cloudBgStyle(h.cloudLow)}
+              >
+                {h.cloudLow}
+              </div>
+            ))} />
+
+            {/* Precipitation */}
+            <Row label="Rain (mm)" cells={hours.map((h) => (
+              <div
+                key={h.time}
+                className={`text-center text-[11px] font-bold h-full flex items-center justify-center ${h.precipitation > 5 ? 'text-white' : 'text-gray-900'}`}
+                style={precipBgStyle(h.precipitation)}
+              >
+                {h.precipitation > 0 ? h.precipitation : '—'}
+              </div>
+            ))} />
+
+            {/* Waves */}
+            {hasWaves && (
+              <Row label="Waves (m)" cells={hours.map((_, i) => {
+                const w = waves[i];
+                return (
+                  <div
+                    key={i}
+                    className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center"
+                    style={w ? waveBgStyle(w.waveHeight) : {}}
+                  >
+                    {w ? w.waveHeight : '—'}
+                  </div>
+                );
+              })} />
+            )}
+
+            {/* Wave period */}
+            {hasWaves && (
+              <Row label="Period (s)" cells={hours.map((_, i) => {
+                const w = waves[i];
+                return (
+                  <div key={i} className="bg-white text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center">
+                    {w ? w.wavePeriod : '—'}
+                  </div>
+                );
+              })} last />
+            )}
+          </div>
+        </div>
       </div>
-      <div className="flex items-center gap-0.5">
-        <DirectionArrow degrees={day.windDirection} color={model.color} />
-        <span className="text-[9px] text-gray-500 leading-none">{day.windDirectionLabel}</span>
+      <Footer hasWaves={hasWaves} modelLabel={modelLabel} modelDesc={modelDesc} />
+    </>
+  );
+}
+
+/* ── Row helper ── */
+function Row({
+  label, cells, bg, borderBottom, last,
+}: {
+  label: string;
+  cells: React.ReactNode[];
+  bg?: string;
+  borderBottom?: boolean;
+  last?: boolean;
+}) {
+  const numCells = cells.length;
+  return (
+    <div
+      className={`grid ${borderBottom || !last ? 'border-b border-gray-200' : ''}`}
+      style={{ gridTemplateColumns: `72px 1fr`, minHeight: 24 }}
+    >
+      <div className={`flex items-center px-2 text-[10px] font-semibold text-gray-600 ${bg ?? 'bg-white'} border-r border-gray-200`}>
+        {label}
       </div>
-      <MiniBar speed={day.windSpeed} gust={day.windGust} color={model.color} />
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${numCells}, 1fr)` }}>
+        {cells.map((c, i) => (
+          <div key={i} className="border-l border-gray-100 first:border-l-0">
+            {c}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-/* ── Wave cell ── */
-function waveColor(height: number): string {
-  if (height <= 0.5) return '#9ca3af';
-  if (height <= 1.2) return '#0891b2';
-  if (height <= 2.0) return '#0e7490';
-  if (height <= 3.0) return '#d97706';
-  return '#dc2626';
+function EmptyState() {
+  return <div className="text-center text-sm text-gray-400 py-8">Forecast unavailable</div>;
 }
 
-function WaveCell({ day }: { day: WaveForecastDay | undefined }) {
-  if (!day) return <div className="text-[10px] text-gray-300 text-center py-2">—</div>;
-
-  const hColor = waveColor(day.waveHeight);
-
+function Footer({ hasWaves, modelLabel, modelDesc }: { hasWaves: boolean; modelLabel?: string; modelDesc?: string }) {
   return (
-    <div className="flex flex-col items-center gap-0.5 py-1.5">
-      <div className="flex items-baseline gap-0.5">
-        <span className="text-sm font-bold tabular-nums leading-none" style={{ color: hColor }}>{day.waveHeight}</span>
-        <span className="text-[9px] text-gray-400 leading-none">m</span>
+    <>
+      <div className="mt-3 flex items-center gap-1 flex-wrap">
+        <span className="text-[9px] text-gray-400 mr-1">Wind:</span>
+        {WIND_LEGEND.map((r) => (
+          <span key={r.label} className="text-[9px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: r.color }}>
+            ≤{r.max} {r.label}
+          </span>
+        ))}
       </div>
-      <div className="flex items-center gap-1">
-        <DirectionArrow degrees={day.waveDirection} color="#0891b2" />
-        <span className="text-[9px] text-gray-500 leading-none">{day.wavePeriod}s</span>
+      <div className="mt-2 pt-2 border-t border-gray-100">
+        <p className="text-[9px] text-gray-400">
+          <span className="font-semibold text-emerald-600">{modelLabel ?? 'ICON-EU'}</span> — {modelDesc ?? 'DWD 7km high-resolution model'}{hasWaves && <span className="text-cyan-600"> · Waves: Open-Meteo Marine</span>}
+        </p>
+        <p className="text-[9px] text-gray-300 mt-1">
+          Wind & gusts in kts · Waves in meters · Arrow = wind destination
+        </p>
       </div>
-    </div>
+    </>
   );
 }
 
-/* ── Consensus ── */
-function ConsensusCell({ dayIdx, forecasts }: { dayIdx: number; forecasts: ModelForecast[] }) {
-  const speeds = forecasts.map((f) => f.days[dayIdx]?.windSpeed ?? 0).filter(Boolean);
-  if (speeds.length < 2) return null;
-
-  const maxDiff = Math.max(...speeds) - Math.min(...speeds);
-  const agreement = maxDiff <= 3 ? 'High' : maxDiff <= 7 ? 'Med' : 'Low';
-  const agColor = maxDiff <= 3 ? 'text-emerald-500' : maxDiff <= 7 ? 'text-amber-500' : 'text-red-400';
-
+/* ── Forecast section helper ── */
+function ForecastSection({
+  title, titleColor, forecast, waves, modelLabel, modelDesc,
+}: {
+  title: string;
+  titleColor: string;
+  forecast: ModelForecast | null;
+  waves: WaveForecastHour[];
+  modelLabel: string;
+  modelDesc: string;
+}) {
   return (
-    <div className="flex flex-col items-center pt-0.5">
-      <div className={`text-[8px] font-semibold ${agColor} leading-none`}>{agreement}</div>
+    <div>
+      <p className={`text-[11px] font-bold ${titleColor} mb-2`}>{title}</p>
+      {forecast && forecast.hours.length > 0
+        ? <HourlyGrid forecasts={[forecast]} waves={waves} modelLabel={modelLabel} modelDesc={modelDesc} />
+        : <EmptyState />
+      }
     </div>
   );
 }
 
 /* ── Main component ── */
-export function WindForecast({ forecasts, waves, loading }: WindForecastProps) {
+export function WindForecast({
+  granularity, onGranularityChange,
+  forecast1km, forecast3km, forecast9km,
+  waves1km, waves3km, waves9km,
+  loading,
+}: WindForecastProps) {
   if (loading) {
     return (
       <div className="metric-card animate-pulse">
         <div className="h-4 bg-gray-200 rounded w-32 mb-4" />
-        <div className="grid grid-cols-5 gap-2">
-          {Array.from({ length: 20 }).map((_, i) => (
-            <div key={i} className="h-12 bg-gray-100 rounded" />
-          ))}
-        </div>
+        <div className="h-32 bg-gray-100 rounded" />
       </div>
     );
   }
-
-  if (forecasts.length === 0) {
-    return (
-      <div className="metric-card text-center text-sm text-gray-400 py-8">
-        Forecast unavailable
-      </div>
-    );
-  }
-
-  const days = forecasts[0].days;
-  const numDays = days.length;
-  const hasWaves = waves.length > 0;
 
   return (
     <div className="metric-card">
-      {/* Header */}
-      <div className="mb-3">
-        <p className="text-sm font-bold text-gray-900">7-Day Forecast</p>
-        <p className="text-[10px] text-gray-400">Wind (3 models) {hasWaves ? '+ waves' : ''} · kts</p>
-      </div>
-
-      {/* Scrollable grid */}
-      <div className="scroll-fade-wrap -mx-5">
-      <div className="overflow-x-auto px-5">
-        <div
-          className="grid gap-px bg-gray-100 rounded-xl overflow-hidden"
-          style={{
-            gridTemplateColumns: `56px repeat(${numDays}, minmax(64px, 1fr))`,
-            minWidth: numDays > 3 ? `${numDays * 76 + 56}px` : undefined,
-          }}
-        >
-          {/* ── Column headers: days ── */}
-          <div className="bg-white" />
-          {days.map((day, i) => {
-            const isToday = i === 0;
-            const avgSpeed = Math.round(
-              forecasts.reduce((sum, f) => sum + (f.days[i]?.windSpeed ?? 0), 0) / forecasts.length
-            );
-            const bg = cellBg(avgSpeed);
-            return (
-              <div key={day.date} className={`${bg} px-2 py-2 text-center`}>
-                <div className={`text-xs font-bold ${isToday ? 'text-brand-500' : 'text-gray-700'}`}>
-                  {isToday ? 'Today' : day.dayLabel}
-                </div>
-                <div className="text-[10px] text-gray-400 leading-tight">{day.dateLabel}</div>
-              </div>
-            );
-          })}
-
-          {/* ── Wind model rows ── */}
-          {forecasts.map((model) => (
-            <React.Fragment key={model.model}>
-              <div className="bg-white flex items-center px-2 py-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-6 rounded-full shrink-0" style={{ backgroundColor: model.color }} />
-                  <span className="text-[10px] font-bold text-gray-600 whitespace-nowrap">{model.label}</span>
-                </div>
-              </div>
-              {days.map((_, dayIdx) => {
-                const day = model.days[dayIdx];
-                const bg = day ? cellBg(day.windSpeed) : 'bg-white';
-                return (
-                  <div key={dayIdx} className={`${bg} px-1`}>
-                    <ModelCell day={day} model={model} />
-                  </div>
-                );
-              })}
-            </React.Fragment>
-          ))}
-
-          {/* ── Consensus row ── */}
-          <div className="bg-white flex items-center px-2 py-1">
-            <span className="text-[9px] font-semibold text-gray-400 whitespace-nowrap">Agree</span>
-          </div>
-          {days.map((_, dayIdx) => (
-            <div key={dayIdx} className="bg-white px-1 py-0.5">
-              <ConsensusCell dayIdx={dayIdx} forecasts={forecasts} />
-            </div>
-          ))}
-
-          {/* ── Waves row ── */}
-          {hasWaves && (
-            <>
-              {/* Separator label */}
-              <div className="bg-white flex items-center px-2 py-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-6 rounded-full shrink-0 bg-cyan-500" />
-                  <span className="text-[10px] font-bold text-gray-600 whitespace-nowrap">Waves</span>
-                </div>
-              </div>
-              {days.map((_, dayIdx) => {
-                const waveDay = waves[dayIdx];
-                return (
-                  <div key={dayIdx} className="bg-cyan-50/50 px-1">
-                    <WaveCell day={waveDay} />
-                  </div>
-                );
-              })}
-            </>
-          )}
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-sm font-bold text-gray-900">Wind Forecast</p>
+          <p className="text-[10px] text-gray-400">Every {granularity}h · WRF models</p>
         </div>
-      </div>
-      </div>
-
-      {/* ── Wind scale legend ── */}
-      <div className="mt-3 flex items-center gap-1 flex-wrap">
-        <span className="text-[9px] text-gray-400 mr-1">Wind:</span>
-        {WIND_RANGES.filter((r) => r.max !== Infinity).map((r) => (
-          <span key={r.label} className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${r.bg} ${r.text}`}>
-            ≤{r.max} {r.label}
-          </span>
-        ))}
+        <GranularitySelector value={granularity} onChange={onGranularityChange} />
       </div>
 
-      {/* ── Footer ── */}
-      <div className="mt-3 pt-2 border-t border-gray-100">
-        <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-          {forecasts.map((f) => (
-            <p key={f.model} className="text-[9px] text-gray-400">
-              <span className="font-semibold" style={{ color: f.color }}>{f.label}</span> — {f.description}
-            </p>
-          ))}
-          {hasWaves && (
-            <p className="text-[9px] text-gray-400">
-              <span className="font-semibold text-cyan-600">Waves</span> — Open-Meteo Marine API
-            </p>
-          )}
-        </div>
-        <p className="text-[9px] text-gray-300 mt-1">
-          Wind: sustained/gust (kts) · Waves: height (m) + period (s) · arrow = direction
-        </p>
+      <div className="space-y-6">
+        <ForecastSection
+          title="WRF 1km — Next 24h"
+          titleColor="text-emerald-600"
+          forecast={forecast1km}
+          waves={waves1km}
+          modelLabel="WRF 1km"
+          modelDesc="High-resolution — next 24h"
+        />
+        <ForecastSection
+          title="WRF 3km — Next 72h"
+          titleColor="text-blue-600"
+          forecast={forecast3km}
+          waves={waves3km}
+          modelLabel="WRF 3km"
+          modelDesc="Extended range — next 72h"
+        />
+        <ForecastSection
+          title="WRF 9km — Next 7 days"
+          titleColor="text-violet-600"
+          forecast={forecast9km}
+          waves={waves9km}
+          modelLabel="WRF 9km"
+          modelDesc="Extended range — next 7 days"
+        />
       </div>
     </div>
   );

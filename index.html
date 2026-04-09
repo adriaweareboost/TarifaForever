@@ -1,19 +1,123 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <title>Tarifa Forever - Live Kitesurf Conditions</title>
+    <title>Tarifa Forever — Live Kitesurf Conditions, Wind Forecast & Webcam</title>
+    <meta name="description" content="Real-time kitesurf conditions in Tarifa: live webcam, 72-hour wind forecast from 3 models (ECMWF, GFS, ICON), wave data, tides & gear recommendations. Updated every 5 minutes." />
+    <link rel="canonical" href="https://tarifaforever.com/" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#00afd7" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tarifaforever.com/" />
+    <meta property="og:title" content="Tarifa Forever — Live Kitesurf Conditions" />
+    <meta property="og:description" content="Real-time wind, waves, webcam & 72h forecast for Tarifa kitesurf spots. 3 weather models compared." />
+    <meta property="og:image" content="https://tarifaforever.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content="Tarifa Forever" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Tarifa Forever — Live Kitesurf Conditions" />
+    <meta name="twitter:description" content="Real-time wind, waves, webcam & 72h forecast for Tarifa kitesurf spots." />
+    <meta name="twitter:image" content="https://tarifaforever.com/og-image.png" />
+
+    <!-- Additional SEO -->
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="Tarifa Forever" />
+    <meta name="keywords" content="tarifa, kitesurf, wind forecast, webcam, live conditions, valdevaqueros, los lances, kiteboarding, windsurf, waves, tides" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
     <!-- GTM se carga solo tras aceptación de cookies (ver CookieConsent component) -->
-    <script src="https://embed.twitch.tv/embed/v1.js"></script>
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Tarifa Forever",
+      "url": "https://tarifaforever.com",
+      "description": "Real-time kitesurf conditions in Tarifa: live webcam, 72-hour wind forecast, wave data, tides and gear recommendations.",
+      "applicationCategory": "WeatherApplication",
+      "operatingSystem": "All",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Tarifa Forever"
+      },
+      "about": {
+        "@type": "SportsActivity",
+        "name": "Kitesurfing",
+        "location": {
+          "@type": "Beach",
+          "name": "Playa de Los Lances",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Tarifa",
+            "addressRegion": "Cadiz",
+            "addressCountry": "ES"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 36.0128,
+            "longitude": -5.6045
+          }
+        }
+      }
+    }
+    </script>
   </head>
   <body class="bg-gray-50 text-gray-900">
     <!-- GTM noscript se inyecta tras aceptación de cookies -->
     <div id="root"></div>
+
+    <!-- SEO: Static content for crawlers that don't execute JS -->
+    <noscript>
+      <div style="max-width:800px;margin:2rem auto;padding:1rem;font-family:system-ui,sans-serif">
+        <h1>Tarifa Forever — Live Kitesurf Conditions</h1>
+        <p>Real-time wind and wave conditions for kitesurfing in Tarifa, Spain. Features include:</p>
+        <ul>
+          <li>Live webcam from Playa de Los Lances and Valdevaqueros</li>
+          <li>72-hour wind forecast comparing 3 models: ECMWF IFS, GFS, and ICON</li>
+          <li>Real-time wind speed, direction, and gust data</li>
+          <li>Wave height, period, and direction</li>
+          <li>Tide charts and predictions</li>
+          <li>Kite size recommendations for different rider profiles</li>
+        </ul>
+        <h2>Spots</h2>
+        <ul>
+          <li>Playa de Los Lances, Tarifa</li>
+          <li>Valdevaqueros, Tarifa</li>
+          <li>Balneario, Tarifa</li>
+          <li>Caños de Meca, Barbate</li>
+        </ul>
+        <p>Visit <a href="https://tarifaforever.com">tarifaforever.com</a> with JavaScript enabled for the full experience.</p>
+      </div>
+    </noscript>
+
+    <!-- Twitch embed loaded async (not render-blocking) -->
+    <script src="https://embed.twitch.tv/embed/v1.js" async></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

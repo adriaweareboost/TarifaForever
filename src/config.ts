@@ -38,6 +38,15 @@ export const SPOTS: SpotConfig[] = [
     noaaStationId: null,
   },
   {
+    id: 'tarifa-town',
+    name: 'Tarifa Town',
+    location: 'Tarifa, Cadiz',
+    lat: 36.0143,
+    lng: -5.6044,
+    twitchChannel: '',
+    noaaStationId: null,
+  },
+  {
     id: 'canos-de-meca',
     name: 'Caños de Meca',
     location: 'Barbate, Cadiz',
