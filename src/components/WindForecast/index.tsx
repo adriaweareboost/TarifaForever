@@ -435,12 +435,12 @@ export function WindForecast({
           modelDesc="Extended range — next 72h"
         />
         <ForecastSection
-          title="WRF 9km — Next 7 days"
+          title="WRF 9km — Next 5 days"
           titleColor="text-violet-600"
           forecast={forecast9km}
           waves={waves9km}
           modelLabel="WRF 9km"
-          modelDesc="Extended range — next 7 days"
+          modelDesc="Extended range — next 5 days"
         />
       </div>
     </div>

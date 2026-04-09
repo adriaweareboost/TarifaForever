@@ -165,10 +165,10 @@ const WRF_3KM: WrfConfig = {
 const WRF_9KM: WrfConfig = {
   id: 'wrf-9km',
   label: 'WRF 9km',
-  description: 'Extended range — next 7 days',
+  description: 'Extended range — next 5 days',
   color: '#7c3aed',
-  forecastDays: '8',
-  cutoffHours: 192,
+  forecastDays: '6',
+  cutoffHours: 120,
   extraParams: { models: 'icon_eu' },
 };
 
