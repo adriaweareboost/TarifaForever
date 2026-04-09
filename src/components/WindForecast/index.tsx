@@ -423,7 +423,7 @@ export function WindForecast({
           forecast={forecast1km}
           waves={waves1km}
           modelLabel="WRF 1km"
-          modelDesc="High-resolution — next 24h"
+          modelDesc="Météo-France AROME ~1.3km"
         />
         <ForecastSection
           title="WRF 3km — Next 72h"
@@ -431,7 +431,7 @@ export function WindForecast({
           forecast={forecast3km}
           waves={waves3km}
           modelLabel="WRF 3km"
-          modelDesc="Extended range — next 72h"
+          modelDesc="DWD ICON-EU 7km"
         />
         <ForecastSection
           title="WRF 9km — Next 5 days"
@@ -439,7 +439,7 @@ export function WindForecast({
           forecast={forecast9km}
           waves={waves9km}
           modelLabel="WRF 9km"
-          modelDesc="Extended range — next 5 days"
+          modelDesc="NOAA GFS 25km"
         />
       </div>
     </div>

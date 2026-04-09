@@ -97,17 +97,17 @@ interface WrfConfig {
 const WRF_1KM: WrfConfig = {
   id: 'wrf-1km',
   label: 'WRF 1km',
-  description: 'High-resolution — next 24h',
+  description: 'Météo-France AROME ~1.3km',
   color: '#059669',
   forecastDays: '2',
   cutoffHours: 24,
-  extraParams: {},
+  extraParams: { models: 'meteofrance_seamless' },
 };
 
 const WRF_3KM: WrfConfig = {
   id: 'wrf-3km',
   label: 'WRF 3km',
-  description: 'Extended range — next 72h',
+  description: 'DWD ICON-EU 7km',
   color: '#2563eb',
   forecastDays: '4',
   cutoffHours: 72,
@@ -117,11 +117,11 @@ const WRF_3KM: WrfConfig = {
 const WRF_9KM: WrfConfig = {
   id: 'wrf-9km',
   label: 'WRF 9km',
-  description: 'Extended range — next 5 days',
+  description: 'NOAA GFS 25km',
   color: '#7c3aed',
   forecastDays: '6',
   cutoffHours: 120,
-  extraParams: { models: 'icon_eu' },
+  extraParams: { models: 'gfs_seamless' },
 };
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
