@@ -350,30 +350,34 @@ async function fetchWrfModel(
   config: WrfConfig,
   step: Granularity,
 ): Promise<ModelForecast> {
-  const params = new URLSearchParams({
-    latitude: spot.lat.toString(),
-    longitude: spot.lng.toString(),
-    hourly: HOURLY_PARAMS,
-    wind_speed_unit: 'kn',
-    timezone: 'auto',
-    forecast_days: config.forecastDays,
-    ...config.extraParams,
-  });
+  try {
+    const params = new URLSearchParams({
+      latitude: spot.lat.toString(),
+      longitude: spot.lng.toString(),
+      hourly: HOURLY_PARAMS,
+      wind_speed_unit: 'kn',
+      timezone: 'auto',
+      forecast_days: config.forecastDays,
+      ...config.extraParams,
+    });
 
-  const res = await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?${params}`);
-  const data: OpenMeteoHourlyResponse = await res.json();
-  const h = data.hourly;
-  const times = h?.time ?? [];
+    const res = await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?${params}`);
+    const data: OpenMeteoHourlyResponse = await res.json();
+    const h = data.hourly;
+    const times = h?.time ?? [];
 
-  const hours = parseHourlyData(times, (i) => buildForecastHour(h, times, i), step, config.cutoffHours);
+    const hours = parseHourlyData(times, (i) => buildForecastHour(h, times, i), step, config.cutoffHours);
 
-  return {
-    model: config.id,
-    label: config.label,
-    description: config.description,
-    color: config.color,
-    hours,
-  };
+    return {
+      model: config.id,
+      label: config.label,
+      description: config.description,
+      color: config.color,
+      hours,
+    };
+  } catch {
+    return { model: config.id, label: config.label, description: config.description, color: config.color, hours: [] };
+  }
 }
 
 export async function fetchWrf1km(spot: SpotConfig, step: Granularity = 1): Promise<ModelForecast> {

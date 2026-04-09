@@ -9,6 +9,10 @@ import {
 
 export type { Granularity };
 
+function settled<T>(r: PromiseSettledResult<T>, fallback: T): T {
+  return r.status === 'fulfilled' ? r.value : fallback;
+}
+
 export function useForecast(spot: SpotConfig) {
   const [granularity, setGranularity] = useState<Granularity>(3);
   const [forecast1km, setForecast1km] = useState<ModelForecast | null>(null);
@@ -24,7 +28,7 @@ export function useForecast(spot: SpotConfig) {
     let cancelled = false;
     setLoading(true);
 
-    Promise.all([
+    Promise.allSettled([
       fetchWrf1km(spot, granularity),
       fetchWrf3km(spot, granularity),
       fetchWrf9km(spot, granularity),
@@ -33,18 +37,15 @@ export function useForecast(spot: SpotConfig) {
       fetchWaveForecast(spot, granularity, 168),
       fetchWindForecast(spot),
     ]).then(([wrf1, wrf3, wrf9, w1km, w3km, w9km, windLegacy]) => {
-      if (!cancelled) {
-        setForecast1km(wrf1);
-        setForecast3km(wrf3);
-        setForecast9km(wrf9);
-        setWaves1km(w1km);
-        setWaves3km(w3km);
-        setWaves9km(w9km);
-        setForecasts(windLegacy);
-        setLoading(false);
-      }
-    }).catch(() => {
-      if (!cancelled) setLoading(false);
+      if (cancelled) return;
+      setForecast1km(settled(wrf1, null));
+      setForecast3km(settled(wrf3, null));
+      setForecast9km(settled(wrf9, null));
+      setWaves1km(settled(w1km, []));
+      setWaves3km(settled(w3km, []));
+      setWaves9km(settled(w9km, []));
+      setForecasts(settled(windLegacy, []));
+      setLoading(false);
     });
 
     return () => { cancelled = true; };
