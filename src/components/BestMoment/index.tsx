@@ -15,6 +15,9 @@ interface DaySlot {
   direction: string;
   windDegrees: number;
   score: number;
+  temperature: number;
+  precipitation: number;
+  cloudCover: number;
 }
 
 /** Levante (E component) vs Poniente (W component) based on wind origin degrees */
@@ -108,6 +111,9 @@ function findBestWindow(hours: ForecastHour[]): DaySlot | null {
   const avgGust = Math.round(windowHours.reduce((s, h) => s + h.windGust, 0) / windowHours.length);
   const direction = windowHours[0].windDirectionLabel;
   const windDegrees = windowHours[0].windDirection;
+  const temperature = Math.round(windowHours.reduce((s, h) => s + h.temperature, 0) / windowHours.length);
+  const precipitation = Math.round(windowHours.reduce((s, h) => s + h.precipitation, 0) * 10) / 10;
+  const cloudCover = Math.round(windowHours.reduce((s, h) => s + Math.max(h.cloudHigh, h.cloudMid, h.cloudLow), 0) / windowHours.length);
 
   const startTime = new Date(windowHours[0].time);
   const endTime = new Date(windowHours[windowHours.length - 1].time);
@@ -130,6 +136,9 @@ function findBestWindow(hours: ForecastHour[]): DaySlot | null {
     direction,
     windDegrees,
     score: bestScore,
+    temperature,
+    precipitation,
+    cloudCover,
   };
 }
 
@@ -217,6 +226,13 @@ export function BestMoment({ forecasts, loading }: BestMomentProps) {
               <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] font-bold text-gray-500">{slot.direction}</span>
                 <span className="text-[10px] font-extrabold tracking-wide text-gray-700">{getWindType(slot.windDegrees)}</span>
+              </div>
+              <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-500">
+                <span title="Temperature">{slot.temperature}°C</span>
+                {slot.precipitation > 0 && (
+                  <span title="Rain" className="text-blue-500">{slot.precipitation}mm</span>
+                )}
+                <span title="Cloud cover">{slot.cloudCover}%</span>
               </div>
               <p className={`text-[10px] font-semibold mt-1 ${q.color}`}>{q.text}</p>
             </div>
