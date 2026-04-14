@@ -157,7 +157,7 @@ function HourlyGrid({ forecasts, waves, modelLabel, modelDesc }: { forecasts: Mo
   const dayGroups = computeDayGroups(hours);
 
   const LABEL_W = 72;
-  const CELL_W = 38;
+  const CELL_W = numHours <= 7 ? 56 : 38;
 
   return (
     <>
@@ -174,7 +174,7 @@ function HourlyGrid({ forecasts, waves, modelLabel, modelDesc }: { forecasts: Mo
                 {dayGroups.map((g) => (
                   <div
                     key={g.startIdx}
-                    className="text-center text-[11px] font-bold text-gray-700 py-1 border-l border-gray-200"
+                    className="text-center text-[11px] font-bold text-gray-700 py-1 border-l border-gray-200 whitespace-nowrap overflow-hidden"
                     style={{ gridColumn: `span ${g.count}` }}
                   >
                     {g.label === 'Today' ? 'Today' : g.label} <span className="text-gray-400 font-normal">{g.dateLabel}</span>
