@@ -46,6 +46,7 @@ export function useWeatherData(activeSpot: SpotConfig) {
 
   const refreshData = useCallback(async () => {
     const spot = spotRef.current;
+    const spotId = spot.id;
     setLoading(true);
     setError(null);
     try {
@@ -53,7 +54,8 @@ export function useWeatherData(activeSpot: SpotConfig) {
         fetchWeatherData(spot),
         fetchTideData(spot, 8),
       ]);
-      if (!mountedRef.current) return;
+      // Discard if spot changed while fetching or component unmounted
+      if (!mountedRef.current || spotRef.current.id !== spotId) return;
       setSpotData(prev => ({
         ...prev,
         weather: weatherResult.current,
@@ -64,10 +66,11 @@ export function useWeatherData(activeSpot: SpotConfig) {
       setWeatherSource(weatherResult.source);
       setTideSource(tideResult.source);
     } catch (err) {
-      if (!mountedRef.current) return;
+      // Discard errors from stale spot fetches
+      if (!mountedRef.current || spotRef.current.id !== spotId) return;
       setError(err instanceof Error ? err.message : 'Error fetching weather data');
     } finally {
-      if (mountedRef.current) setLoading(false);
+      if (mountedRef.current && spotRef.current.id === spotId) setLoading(false);
     }
   }, []);
 
