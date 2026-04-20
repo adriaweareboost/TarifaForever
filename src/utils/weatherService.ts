@@ -225,8 +225,8 @@ async function fetchOpenMeteo15min(spot: SpotConfig): Promise<{
         wind_speed_unit: 'kn',
         timezone: 'auto',
         forecast_days: '1',
-        past_days: '0',
-        past_minutely_15: '4',
+        past_days: '2',
+        past_minutely_15: '24',
       });
       const res = await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?${params}`);
       return res.json() as Promise<OpenMeteo15minResponse>;
@@ -341,17 +341,22 @@ function build15minHistory(
     }
   }
 
-  // Fallback: append hourly if no 15-min data
-  if (history.length === 0 && hourly?.time) {
+  // Prepend hourly data for the older part of the 48h window
+  // (15-min data only covers recent hours)
+  if (hourly?.time) {
+    const earliestM15 = history.length > 0 ? history[0].timestamp.getTime() : now.getTime();
+    const hourlyEntries: WeatherData[] = [];
+
     for (let i = 0; i < hourly.time.length; i++) {
       const time = new Date(hourly.time[i]);
+      if (time.getTime() >= earliestM15) break; // don't overlap with 15-min data
       if (time > now) break;
 
       const windSpeed = round1(hourly.wind_speed_10m?.[i] ?? 0);
       const windGust = round1(Math.max(windSpeed, hourly.wind_gusts_10m?.[i] ?? 0));
       const windDirection = hourly.wind_direction_10m?.[i] ?? 0;
 
-      history.push({
+      hourlyEntries.push({
         windSpeed,
         windDirection,
         windDirectionLabel: degreesToCompass(windDirection),
@@ -365,6 +370,11 @@ function build15minHistory(
         timestamp: time,
         quality: calcQuality(windSpeed, windGust, 0),
       });
+    }
+
+    // Prepend hourly before the 15-min entries
+    if (hourlyEntries.length > 0) {
+      history.unshift(...hourlyEntries);
     }
   }
 

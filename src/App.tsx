@@ -11,6 +11,7 @@ import { useActiveSpot } from './hooks/useActiveSpot';
 import { useForecast } from './hooks/useForecast';
 import { WindForecast } from './components/WindForecast';
 import { BestMoment } from './components/BestMoment';
+import { WindTrend } from './components/WindTrend';
 import { WindCompass } from './components/WeatherPanel/WindCompass';
 import { recommendKiteSize, getQualityFactors, WEIGHT_PROFILES } from './utils/quality';
 import { LOCALE } from './config';
@@ -180,6 +181,8 @@ function App() {
           </ErrorBoundary>
 
           <ConditionsAndGear weather={spotData.weather} averages={averages} />
+
+          <WindTrend history={spotData.weatherHistory} live={spotData.weather} />
 
           <BestMoment forecasts={forecasts} loading={forecastLoading} />
 

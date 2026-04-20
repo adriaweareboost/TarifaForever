@@ -14,7 +14,7 @@ function settled<T>(r: PromiseSettledResult<T>, fallback: T): T {
 }
 
 export function useForecast(spot: SpotConfig) {
-  const [granularity, setGranularity] = useState<Granularity>(3);
+  const [granularity, setGranularity] = useState<Granularity>(1);
   const [forecast1km, setForecast1km] = useState<ModelForecast | null>(null);
   const [forecast3km, setForecast3km] = useState<ModelForecast | null>(null);
   const [forecast9km, setForecast9km] = useState<ModelForecast | null>(null);
