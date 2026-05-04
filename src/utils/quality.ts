@@ -83,10 +83,10 @@ export function getWindShoreLabel(windDirection: number, shoreNormal: number): W
   const diff = angleDiff(windDirection, shoreNormal);
   // diff ≈ 0  → wind comes from same dir beach faces → onshore
   // diff ≈ 180 → wind comes from inland → offshore
-  if (diff >= 157.5) return 'offshore';
-  if (diff >= 112.5) return 'cross-off';
-  if (diff >= 67.5) return 'cross';
-  if (diff >= 22.5) return 'cross-on';
+  if (diff >= 150) return 'offshore';
+  if (diff >= 120) return 'cross-off';
+  if (diff >= 60) return 'cross';       // sideshore only (~90° ±30°)
+  if (diff >= 30) return 'cross-on';
   return 'onshore';
 }
 

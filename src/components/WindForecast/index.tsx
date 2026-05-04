@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import type {
   ModelForecast, WaveForecastHour, Granularity,
 } from '../../utils/forecastService';
 import { computeDayGroups } from '../../utils/forecastService';
-import { useScrollFade } from '../../hooks/useScrollFade';
+
 import { calcWaveridingScore } from '../../utils/quality';
 
 interface WindForecastProps {
@@ -164,7 +164,7 @@ function GranularitySelector({ value, onChange }: { value: Granularity; onChange
    ══════════════════════════════════════════════════════ */
 
 function HourlyGrid({ forecasts, waves, modelLabel, modelDesc, shoreNormal }: { forecasts: ModelForecast[]; waves: WaveForecastHour[]; modelLabel?: string; modelDesc?: string; shoreNormal: number }) {
-  const { scrollRef, wrapClass } = useScrollFade();
+  const scrollRef = useRef<HTMLDivElement>(null);
   if (forecasts.length === 0) return <EmptyState />;
 
   const hours = forecasts[0].hours;
@@ -259,7 +259,7 @@ function HourlyGrid({ forecasts, waves, modelLabel, modelDesc, shoreNormal }: { 
               <div
                 key={i}
                 className={`flex items-center px-2 text-[10px] font-semibold text-gray-600 border-r border-gray-200 ${i < rows.length - 1 ? 'border-b border-gray-200' : ''}`}
-                style={{ height: ROW_H, backgroundColor: r.bg === 'gray' ? '#f9fafb' : '#ffffff' }}
+                style={{ height: ROW_H, maxHeight: ROW_H, overflow: 'hidden', backgroundColor: r.bg === 'gray' ? '#f9fafb' : '#ffffff' }}
               >
                 {r.label}
               </div>
@@ -267,7 +267,7 @@ function HourlyGrid({ forecasts, waves, modelLabel, modelDesc, shoreNormal }: { 
           </div>
 
           {/* Scrollable data columns */}
-          <div className={`${wrapClass} overflow-x-auto flex-1 min-w-0`} ref={scrollRef}>
+          <div className="overflow-x-auto flex-1 min-w-0" ref={scrollRef}>
             <div style={{ minWidth: `${numHours * CELL_W}px` }}>
               {/* Day groups header */}
               <div className="grid bg-gray-50 border-b border-gray-200" style={{ gridTemplateColumns: `repeat(${numHours}, 1fr)`, height: HEADER_H }}>
@@ -286,10 +286,10 @@ function HourlyGrid({ forecasts, waves, modelLabel, modelDesc, shoreNormal }: { 
                 <div
                   key={ri}
                   className={`grid ${ri < rows.length - 1 ? 'border-b border-gray-200' : ''}`}
-                  style={{ gridTemplateColumns: `repeat(${numHours}, 1fr)`, height: ROW_H }}
+                  style={{ gridTemplateColumns: `repeat(${numHours}, 1fr)`, height: ROW_H, maxHeight: ROW_H, overflow: 'hidden' }}
                 >
                   {r.cells.map((c, ci) => (
-                    <div key={ci} className="border-l border-gray-100 first:border-l-0">{c}</div>
+                    <div key={ci} className="border-l border-gray-100 first:border-l-0 overflow-hidden">{c}</div>
                   ))}
                 </div>
               ))}
