@@ -13,8 +13,9 @@ import { WindForecast } from './components/WindForecast';
 import { BestMoment } from './components/BestMoment';
 import { WindTrend } from './components/WindTrend';
 import { WindCompass } from './components/WeatherPanel/WindCompass';
-import { recommendKiteSize, getQualityFactors, WEIGHT_PROFILES } from './utils/quality';
+import { recommendKiteSize, getQualityFactors, WEIGHT_PROFILES, calcWaveridingScore, getWindShoreLabel } from './utils/quality';
 import { LOCALE } from './config';
+import type { SpotConfig } from './config';
 import type { WeatherData, WeatherAverages } from './types/weather';
 import { Wind, Waves, Thermometer, Compass, ChevronDown } from 'lucide-react';
 
@@ -30,7 +31,7 @@ const FACTOR_STATUS = {
   bad: { bg: 'bg-red-100', text: 'text-red-700', icon: '🛑' },
 } as const;
 
-function ConditionsAndGear({ weather, averages }: { weather: WeatherData; averages: WeatherAverages | null }) {
+function ConditionsAndGear({ weather, averages, spot }: { weather: WeatherData; averages: WeatherAverages | null; spot: SpotConfig }) {
   const q = QUALITY_CONFIG[weather.quality];
   const timeStr = new Date().toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
   const factors = getQualityFactors(weather.windSpeed, weather.windGust, weather.waveHeight);
@@ -74,6 +75,41 @@ function ConditionsAndGear({ weather, averages }: { weather: WeatherData; averag
             );
           })}
         </div>
+
+        {/* Swell & Waveriding Score */}
+        {weather.swellHeight > 0 && (() => {
+          const score = calcWaveridingScore(weather.swellHeight, weather.swellPeriod, weather.windSpeed, weather.windDirection, spot.shoreNormal);
+          const shoreLabel = getWindShoreLabel(weather.windDirection, spot.shoreNormal);
+          const shoreLabelDisplay: Record<string, string> = {
+            offshore: 'Offshore', 'cross-off': 'Cross-off', cross: 'Cross',
+            'cross-on': 'Cross-on', onshore: 'Onshore',
+          };
+          const scoreColor = score >= 7 ? 'text-emerald-600' : score >= 4 ? 'text-amber-600' : 'text-red-500';
+          const scoreBg = score >= 7 ? 'bg-emerald-100' : score >= 4 ? 'bg-amber-100' : 'bg-red-100';
+          return (
+            <div className="mt-3 pt-3 border-t border-gray-200/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Waveriding</span>
+                <span className={`text-sm font-extrabold ${scoreColor} ${scoreBg} px-1.5 py-0.5 rounded-md`}>{score}/10</span>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Swell</span>
+                  <span className="text-sm font-bold text-gray-900">{weather.swellHeight}m · {weather.swellPeriod}s</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Wind/Shore</span>
+                  <span className={`text-sm font-bold ${shoreLabel === 'offshore' || shoreLabel === 'cross-off' ? 'text-emerald-600' : shoreLabel === 'onshore' || shoreLabel === 'cross-on' ? 'text-red-500' : 'text-amber-600'}`}>
+                    {shoreLabelDisplay[shoreLabel]}
+                  </span>
+                </div>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-2">
+                {score >= 7 ? 'Great for strapless!' : score >= 4 ? 'Rideable waves, worth trying' : 'Choppy / flat — twin tip day'}
+              </p>
+            </div>
+          );
+        })()}
 
         <p className="text-[10px] text-gray-400 mt-3">
           Ideal: wind 12-30kts · gusts &lt;1.6× · waves 0.3-2.5m
@@ -180,7 +216,7 @@ function App() {
             )}
           </ErrorBoundary>
 
-          <ConditionsAndGear weather={spotData.weather} averages={averages} />
+          <ConditionsAndGear weather={spotData.weather} averages={averages} spot={activeSpot} />
 
           <WindTrend history={spotData.weatherHistory} live={spotData.weather} />
 
@@ -197,6 +233,7 @@ function App() {
               waves3km={waves3km}
               waves9km={waves9km}
               loading={forecastLoading}
+              shoreNormal={activeSpot.shoreNormal}
             />
           </ErrorBoundary>
 

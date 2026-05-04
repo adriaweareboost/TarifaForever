@@ -12,6 +12,7 @@ const TEST_SPOT: SpotConfig = {
   lng: -5.6,
   twitchChannel: '',
   noaaStationId: null,
+  shoreNormal: 180,
 };
 
 const NOAA_SPOT: SpotConfig = {

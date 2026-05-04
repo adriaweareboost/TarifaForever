@@ -11,9 +11,12 @@ export interface WeatherData {
   windDirection: number;      // degrees (0-360)
   windDirectionLabel: string; // e.g. "NNE"
   windGust: number;           // knots
-  waveHeight: number;         // meters
+  waveHeight: number;         // meters (total: swell + wind waves)
   wavePeriod: number;         // seconds
   waveDirection: number;      // degrees
+  swellHeight: number;        // meters (swell only, no wind chop)
+  swellPeriod: number;        // seconds
+  swellDirection: number;     // degrees
   temperature: number;        // celsius
   humidity: number;           // percentage
   waterTemperature: number;   // celsius

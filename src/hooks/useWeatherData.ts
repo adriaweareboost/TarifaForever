@@ -15,6 +15,7 @@ function buildInitialSpot(spot: SpotConfig): SpotData {
     weather: {
       windSpeed: 0, windDirection: 0, windDirectionLabel: '--', windGust: 0,
       waveHeight: 0, wavePeriod: 0, waveDirection: 0,
+      swellHeight: 0, swellPeriod: 0, swellDirection: 0,
       temperature: 0, humidity: 0, waterTemperature: 0,
       timestamp: new Date(), quality: 'moderate',
     },

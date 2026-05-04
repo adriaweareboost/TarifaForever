@@ -6,6 +6,8 @@ export interface SpotConfig {
   lng: number;
   twitchChannel: string;
   noaaStationId: string | null;
+  /** Direction the beach faces (seaward), in degrees. Used to compute offshore/onshore. */
+  shoreNormal: number;
 }
 
 /** Available spots */
@@ -18,6 +20,7 @@ export const SPOTS: SpotConfig[] = [
     lng: -5.6045,
     twitchChannel: 'tarifaforever',
     noaaStationId: null,
+    shoreNormal: 170,   // SSE — offshore from N/NNW
   },
   {
     id: 'tarifa-valdevaqueros',
@@ -27,6 +30,7 @@ export const SPOTS: SpotConfig[] = [
     lng: -5.6894,
     twitchChannel: 'tarifaforever',
     noaaStationId: null,
+    shoreNormal: 200,   // SSW — offshore from NNE
   },
   {
     id: 'tarifa-balneario',
@@ -36,6 +40,7 @@ export const SPOTS: SpotConfig[] = [
     lng: -5.6012,
     twitchChannel: '',
     noaaStationId: null,
+    shoreNormal: 175,   // S — offshore from N
   },
   {
     id: 'tarifa-town',
@@ -45,6 +50,7 @@ export const SPOTS: SpotConfig[] = [
     lng: -5.6044,
     twitchChannel: '',
     noaaStationId: null,
+    shoreNormal: 160,   // SSE — offshore from NNW
   },
   {
     id: 'canos-de-meca',
@@ -54,6 +60,7 @@ export const SPOTS: SpotConfig[] = [
     lng: -5.9483,
     twitchChannel: '',
     noaaStationId: null,
+    shoreNormal: 210,   // SSW — offshore from NNE
   },
 ];
 

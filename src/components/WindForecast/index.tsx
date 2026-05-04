@@ -4,6 +4,7 @@ import type {
 } from '../../utils/forecastService';
 import { computeDayGroups } from '../../utils/forecastService';
 import { useScrollFade } from '../../hooks/useScrollFade';
+import { calcWaveridingScore } from '../../utils/quality';
 
 interface WindForecastProps {
   granularity: Granularity;
@@ -15,6 +16,7 @@ interface WindForecastProps {
   waves3km: WaveForecastHour[];
   waves9km: WaveForecastHour[];
   loading: boolean;
+  shoreNormal: number;
 }
 
 /* ── Windguru-style color scale (kts) ── */
@@ -109,6 +111,20 @@ function waveBgStyle(height: number): React.CSSProperties {
   return { backgroundColor: '#dc2626' };
 }
 
+/** Waveriding score color — white (1) to green (10) */
+function waveridingBgStyle(score: number): React.CSSProperties {
+  if (score <= 1) return { backgroundColor: '#ffffff' };
+  if (score <= 2) return { backgroundColor: '#f0fdf4' };
+  if (score <= 3) return { backgroundColor: '#dcfce7' };
+  if (score <= 4) return { backgroundColor: '#bbf7d0' };
+  if (score <= 5) return { backgroundColor: '#86efac' };
+  if (score <= 6) return { backgroundColor: '#4ade80' };
+  if (score <= 7) return { backgroundColor: '#22c55e' };
+  if (score <= 8) return { backgroundColor: '#16a34a' };
+  if (score <= 9) return { backgroundColor: '#15803d' };
+  return { backgroundColor: '#166534' };
+}
+
 /* ── Direction arrow (points TO wind destination) ── */
 function DirectionArrow({ degrees, size = 12 }: { degrees: number; size?: number }) {
   const toDir = (degrees + 180) % 360;
@@ -147,7 +163,7 @@ function GranularitySelector({ value, onChange }: { value: Granularity; onChange
    72h Hourly Grid — Windguru style
    ══════════════════════════════════════════════════════ */
 
-function HourlyGrid({ forecasts, waves, modelLabel, modelDesc }: { forecasts: ModelForecast[]; waves: WaveForecastHour[]; modelLabel?: string; modelDesc?: string }) {
+function HourlyGrid({ forecasts, waves, modelLabel, modelDesc, shoreNormal }: { forecasts: ModelForecast[]; waves: WaveForecastHour[]; modelLabel?: string; modelDesc?: string; shoreNormal: number }) {
   const { scrollRef, wrapClass } = useScrollFade();
   if (forecasts.length === 0) return <EmptyState />;
 
@@ -158,186 +174,131 @@ function HourlyGrid({ forecasts, waves, modelLabel, modelDesc }: { forecasts: Mo
 
   const LABEL_W = 72;
   const CELL_W = numHours <= 7 ? 56 : 38;
+  const ROW_H = 20;
+  const HEADER_H = 22;
+
+  // Build row definitions for label + cells side-by-side
+  const rows: { label: string; bg: 'gray' | 'white'; cells: React.ReactNode[] }[] = [
+    // Hour
+    { label: '', bg: 'gray', cells: hours.map((h) => {
+      const hr = new Date(h.time).getHours();
+      const isNight = hr < 6 || hr >= 22;
+      return <div key={h.time} className={`text-center text-[10px] font-semibold h-full flex items-center justify-center ${isNight ? 'text-gray-400' : 'text-gray-700'}`}>{hr}h</div>;
+    })},
+    // Wind
+    { label: 'Wind (kts)', bg: 'white', cells: hours.map((h) => (
+      <div key={h.time} className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center" style={cellBgStyle(h.windSpeed)}>{h.windSpeed}</div>
+    ))},
+    // Gusts
+    { label: 'Gusts (kts)', bg: 'white', cells: hours.map((h) => (
+      <div key={h.time} className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center" style={cellBgStyle(h.windGust)}>{h.windGust}</div>
+    ))},
+    // Direction
+    { label: 'Direction', bg: 'white', cells: hours.map((h) => (
+      <div key={h.time} className="bg-white flex items-center justify-center h-full"><DirectionArrow degrees={h.windDirection} /></div>
+    ))},
+    // Temperature
+    { label: 'Temp (°C)', bg: 'white', cells: hours.map((h) => (
+      <div key={h.time} className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center" style={tempBgStyle(h.temperature)}>{h.temperature}</div>
+    ))},
+    // Cloud high
+    { label: 'Cld Hi %', bg: 'white', cells: hours.map((h) => (
+      <div key={h.time} className="text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center" style={cloudBgStyle(h.cloudHigh)}>{h.cloudHigh}</div>
+    ))},
+    // Cloud mid
+    { label: 'Cld Mid %', bg: 'white', cells: hours.map((h) => (
+      <div key={h.time} className="text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center" style={cloudBgStyle(h.cloudMid)}>{h.cloudMid}</div>
+    ))},
+    // Cloud low
+    { label: 'Cld Lo %', bg: 'white', cells: hours.map((h) => (
+      <div key={h.time} className="text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center" style={cloudBgStyle(h.cloudLow)}>{h.cloudLow}</div>
+    ))},
+    // Rain
+    { label: 'Rain (mm)', bg: 'white', cells: hours.map((h) => (
+      <div key={h.time} className={`text-center text-[11px] font-bold h-full flex items-center justify-center ${h.precipitation > 5 ? 'text-white' : 'text-gray-900'}`} style={precipBgStyle(h.precipitation)}>{h.precipitation > 0 ? h.precipitation : '—'}</div>
+    ))},
+  ];
+
+  // Waves rows
+  if (hasWaves) {
+    rows.push(
+      { label: 'Waves (m)', bg: 'white', cells: hours.map((_, i) => {
+        const w = waves[i];
+        return <div key={i} className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center" style={w ? waveBgStyle(w.waveHeight) : {}}>{w ? w.waveHeight : '—'}</div>;
+      })},
+      { label: 'Period (s)', bg: 'white', cells: hours.map((_, i) => {
+        const w = waves[i];
+        return <div key={i} className="bg-white text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center">{w ? w.wavePeriod : '—'}</div>;
+      })},
+      { label: 'Swell (m)', bg: 'white', cells: hours.map((_, i) => {
+        const w = waves[i];
+        return <div key={i} className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center" style={w ? waveBgStyle(w.swellHeight) : {}}>{w ? w.swellHeight : '—'}</div>;
+      })},
+      { label: 'Swell T (s)', bg: 'white', cells: hours.map((_, i) => {
+        const w = waves[i];
+        return <div key={i} className="bg-white text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center">{w ? w.swellPeriod : '—'}</div>;
+      })},
+      { label: 'Ride 1-10', bg: 'white', cells: hours.map((h, i) => {
+        const w = waves[i];
+        const score = w ? calcWaveridingScore(w.swellHeight, w.swellPeriod, h.windSpeed, h.windDirection, shoreNormal) : 0;
+        return <div key={i} className={`text-center text-[11px] font-extrabold h-full flex items-center justify-center ${score >= 8 ? 'text-white' : 'text-gray-900'}`} style={w ? waveridingBgStyle(score) : {}}>{w ? score : '—'}</div>;
+      })},
+    );
+  }
 
   return (
     <>
-      <div className={`${wrapClass} -mx-5`}>
-        <div ref={scrollRef} className="overflow-x-auto px-5">
-          <div
-            className="rounded-lg overflow-hidden border border-gray-200"
-            style={{ minWidth: `${numHours * CELL_W + LABEL_W}px` }}
-          >
-            {/* Day groups header */}
-            <div className="grid bg-gray-50 border-b border-gray-200" style={{ gridTemplateColumns: `${LABEL_W}px 1fr` }}>
-              <div />
-              <div className="grid" style={{ gridTemplateColumns: `repeat(${numHours}, 1fr)` }}>
+      <div className="-mx-5">
+        <div className="flex border border-gray-200 rounded-lg mx-5">
+          {/* Fixed label column */}
+          <div className="shrink-0" style={{ width: LABEL_W }}>
+            {/* Day header spacer */}
+            <div className="bg-gray-50 border-b border-gray-200 border-r border-gray-200" style={{ height: HEADER_H }}>&nbsp;</div>
+            {/* Row labels */}
+            {rows.map((r, i) => (
+              <div
+                key={i}
+                className={`flex items-center px-2 text-[10px] font-semibold text-gray-600 border-r border-gray-200 ${i < rows.length - 1 ? 'border-b border-gray-200' : ''}`}
+                style={{ height: ROW_H, backgroundColor: r.bg === 'gray' ? '#f9fafb' : '#ffffff' }}
+              >
+                {r.label}
+              </div>
+            ))}
+          </div>
+
+          {/* Scrollable data columns */}
+          <div className={`${wrapClass} overflow-x-auto flex-1 min-w-0`} ref={scrollRef}>
+            <div style={{ minWidth: `${numHours * CELL_W}px` }}>
+              {/* Day groups header */}
+              <div className="grid bg-gray-50 border-b border-gray-200" style={{ gridTemplateColumns: `repeat(${numHours}, 1fr)`, height: HEADER_H }}>
                 {dayGroups.map((g) => (
                   <div
                     key={g.startIdx}
-                    className="text-center text-[11px] font-bold text-gray-700 py-1 border-l border-gray-200 whitespace-nowrap overflow-hidden"
+                    className="text-center text-[11px] font-bold text-gray-700 flex items-center justify-center border-l border-gray-100 first:border-l-0 whitespace-nowrap overflow-hidden"
                     style={{ gridColumn: `span ${g.count}` }}
                   >
-                    {g.label === 'Today' ? 'Today' : g.label} <span className="text-gray-400 font-normal">{g.dateLabel}</span>
+                    {g.label === 'Today' ? 'Today' : g.label} <span className="text-gray-400 font-normal ml-1">{g.dateLabel}</span>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Hour row */}
-            <Row label="" cells={hours.map((h) => {
-              const hr = new Date(h.time).getHours();
-              const isNight = hr < 6 || hr >= 22;
-              return (
-                <div key={h.time} className={`text-center text-[10px] font-semibold ${isNight ? 'text-gray-400' : 'text-gray-700'}`}>
-                  {hr}h
+              {/* Data rows */}
+              {rows.map((r, ri) => (
+                <div
+                  key={ri}
+                  className={`grid ${ri < rows.length - 1 ? 'border-b border-gray-200' : ''}`}
+                  style={{ gridTemplateColumns: `repeat(${numHours}, 1fr)`, height: ROW_H }}
+                >
+                  {r.cells.map((c, ci) => (
+                    <div key={ci} className="border-l border-gray-100 first:border-l-0">{c}</div>
+                  ))}
                 </div>
-              );
-            })} bg="bg-gray-50" borderBottom />
-
-            {/* Wind speed */}
-            <Row label="Wind (kts)" cells={hours.map((h) => (
-              <div
-                key={h.time}
-                className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center"
-                style={cellBgStyle(h.windSpeed)}
-              >
-                {h.windSpeed}
-              </div>
-            ))} />
-
-            {/* Gusts */}
-            <Row label="Gusts (kts)" cells={hours.map((h) => (
-              <div
-                key={h.time}
-                className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center"
-                style={cellBgStyle(h.windGust)}
-              >
-                {h.windGust}
-              </div>
-            ))} />
-
-            {/* Direction */}
-            <Row label="Direction" cells={hours.map((h) => (
-              <div key={h.time} className="bg-white flex items-center justify-center h-full">
-                <DirectionArrow degrees={h.windDirection} />
-              </div>
-            ))} />
-
-            {/* Temperature */}
-            <Row label="Temp (°C)" cells={hours.map((h) => (
-              <div
-                key={h.time}
-                className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center"
-                style={tempBgStyle(h.temperature)}
-              >
-                {h.temperature}
-              </div>
-            ))} />
-
-            {/* Cloud cover */}
-            <Row label="Cld Hi %" cells={hours.map((h) => (
-              <div
-                key={h.time}
-                className="text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center"
-                style={cloudBgStyle(h.cloudHigh)}
-              >
-                {h.cloudHigh}
-              </div>
-            ))} />
-
-            <Row label="Cld Mid %" cells={hours.map((h) => (
-              <div
-                key={h.time}
-                className="text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center"
-                style={cloudBgStyle(h.cloudMid)}
-              >
-                {h.cloudMid}
-              </div>
-            ))} />
-
-            <Row label="Cld Lo %" cells={hours.map((h) => (
-              <div
-                key={h.time}
-                className="text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center"
-                style={cloudBgStyle(h.cloudLow)}
-              >
-                {h.cloudLow}
-              </div>
-            ))} />
-
-            {/* Precipitation */}
-            <Row label="Rain (mm)" cells={hours.map((h) => (
-              <div
-                key={h.time}
-                className={`text-center text-[11px] font-bold h-full flex items-center justify-center ${h.precipitation > 5 ? 'text-white' : 'text-gray-900'}`}
-                style={precipBgStyle(h.precipitation)}
-              >
-                {h.precipitation > 0 ? h.precipitation : '—'}
-              </div>
-            ))} />
-
-            {/* Waves */}
-            {hasWaves && (
-              <Row label="Waves (m)" cells={hours.map((_, i) => {
-                const w = waves[i];
-                return (
-                  <div
-                    key={i}
-                    className="text-center text-[11px] font-bold text-gray-900 h-full flex items-center justify-center"
-                    style={w ? waveBgStyle(w.waveHeight) : {}}
-                  >
-                    {w ? w.waveHeight : '—'}
-                  </div>
-                );
-              })} />
-            )}
-
-            {/* Wave period */}
-            {hasWaves && (
-              <Row label="Period (s)" cells={hours.map((_, i) => {
-                const w = waves[i];
-                return (
-                  <div key={i} className="bg-white text-center text-[11px] font-semibold text-gray-700 h-full flex items-center justify-center">
-                    {w ? w.wavePeriod : '—'}
-                  </div>
-                );
-              })} last />
-            )}
+              ))}
+            </div>
           </div>
         </div>
       </div>
       <Footer hasWaves={hasWaves} modelLabel={modelLabel} modelDesc={modelDesc} />
     </>
-  );
-}
-
-/* ── Row helper ── */
-function Row({
-  label, cells, bg, borderBottom, last,
-}: {
-  label: string;
-  cells: React.ReactNode[];
-  bg?: string;
-  borderBottom?: boolean;
-  last?: boolean;
-}) {
-  const numCells = cells.length;
-  return (
-    <div
-      className={`grid ${borderBottom || !last ? 'border-b border-gray-200' : ''}`}
-      style={{ gridTemplateColumns: `72px 1fr`, minHeight: 24 }}
-    >
-      <div className={`flex items-center px-2 text-[10px] font-semibold text-gray-600 ${bg ?? 'bg-white'} border-r border-gray-200`}>
-        {label}
-      </div>
-      <div className="grid" style={{ gridTemplateColumns: `repeat(${numCells}, 1fr)` }}>
-        {cells.map((c, i) => (
-          <div key={i} className="border-l border-gray-100 first:border-l-0">
-            {c}
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -370,7 +331,7 @@ function Footer({ hasWaves, modelLabel, modelDesc }: { hasWaves: boolean; modelL
 
 /* ── Forecast section helper ── */
 function ForecastSection({
-  title, titleColor, forecast, waves, modelLabel, modelDesc,
+  title, titleColor, forecast, waves, modelLabel, modelDesc, shoreNormal,
 }: {
   title: string;
   titleColor: string;
@@ -378,12 +339,13 @@ function ForecastSection({
   waves: WaveForecastHour[];
   modelLabel: string;
   modelDesc: string;
+  shoreNormal: number;
 }) {
   return (
     <div>
       <p className={`text-[11px] font-bold ${titleColor} mb-2`}>{title}</p>
       {forecast && forecast.hours.length > 0
-        ? <HourlyGrid forecasts={[forecast]} waves={waves} modelLabel={modelLabel} modelDesc={modelDesc} />
+        ? <HourlyGrid forecasts={[forecast]} waves={waves} modelLabel={modelLabel} modelDesc={modelDesc} shoreNormal={shoreNormal} />
         : <EmptyState />
       }
     </div>
@@ -396,6 +358,7 @@ export function WindForecast({
   forecast1km, forecast3km, forecast9km,
   waves1km, waves3km, waves9km,
   loading,
+  shoreNormal,
 }: WindForecastProps) {
   if (loading) {
     return (
@@ -424,6 +387,7 @@ export function WindForecast({
           waves={waves1km}
           modelLabel="WRF 1km"
           modelDesc="Météo-France AROME ~1.3km"
+          shoreNormal={shoreNormal}
         />
         <ForecastSection
           title="WRF 3km — Next 72h"
@@ -432,6 +396,7 @@ export function WindForecast({
           waves={waves3km}
           modelLabel="WRF 3km"
           modelDesc="DWD ICON-EU 7km"
+          shoreNormal={shoreNormal}
         />
         <ForecastSection
           title="WRF 9km — Next 5 days"
@@ -440,6 +405,7 @@ export function WindForecast({
           waves={waves9km}
           modelLabel="WRF 9km"
           modelDesc="NOAA GFS 25km"
+          shoreNormal={shoreNormal}
         />
       </div>
     </div>

@@ -58,6 +58,86 @@ export function getQualityFactors(windSpeed: number, windGust: number, waveHeigh
   return factors;
 }
 
+/* ══════════════════════════════════════════════════════
+   Waveriding score (1-10)
+   Helps riders decide if strapless / wave board is worth it.
+   Factors: swell height, swell period, wind speed, wind vs shore angle.
+   ══════════════════════════════════════════════════════ */
+
+/** Smallest angular difference (0-180) between two compass bearings */
+function angleDiff(a: number, b: number): number {
+  const d = Math.abs(((a - b) % 360 + 360) % 360);
+  return d > 180 ? 360 - d : d;
+}
+
+/**
+ * Wind-shore relationship label.
+ * `shoreNormal` = direction the beach faces (seaward).
+ * Wind direction = where the wind comes FROM.
+ * Offshore = wind blows FROM land TO sea (wind dir ≈ shoreNormal + 180).
+ */
+export type WindShoreLabel = 'offshore' | 'cross-off' | 'cross' | 'cross-on' | 'onshore';
+
+export function getWindShoreLabel(windDirection: number, shoreNormal: number): WindShoreLabel {
+  // Angle between wind origin and the seaward direction
+  const diff = angleDiff(windDirection, shoreNormal);
+  // diff ≈ 0  → wind comes from same dir beach faces → onshore
+  // diff ≈ 180 → wind comes from inland → offshore
+  if (diff >= 157.5) return 'offshore';
+  if (diff >= 112.5) return 'cross-off';
+  if (diff >= 67.5) return 'cross';
+  if (diff >= 22.5) return 'cross-on';
+  return 'onshore';
+}
+
+export function calcWaveridingScore(
+  swellHeight: number,
+  swellPeriod: number,
+  windSpeed: number,
+  windDirection: number,
+  shoreNormal: number,
+): number {
+  // No swell → no waves to ride
+  if (swellHeight < 0.2) return 1;
+
+  // Height score (0-4): sweet spot 0.6-1.8m for strapless
+  let heightScore: number;
+  if (swellHeight < 0.3) heightScore = 0.5;
+  else if (swellHeight < 0.5) heightScore = 1;
+  else if (swellHeight < 0.8) heightScore = 2;
+  else if (swellHeight < 1.2) heightScore = 3;
+  else if (swellHeight < 1.8) heightScore = 4;
+  else if (swellHeight < 2.5) heightScore = 3;
+  else heightScore = 2;
+
+  // Period score (0-3): longer = cleaner, more defined waves
+  let periodScore: number;
+  if (swellPeriod < 4) periodScore = 0;
+  else if (swellPeriod < 6) periodScore = 0.5;
+  else if (swellPeriod < 8) periodScore = 1.5;
+  else if (swellPeriod < 10) periodScore = 2;
+  else if (swellPeriod < 13) periodScore = 2.5;
+  else periodScore = 3;
+
+  // Wind-shore score (0-3): offshore cleans the wave face
+  const shore = getWindShoreLabel(windDirection, shoreNormal);
+  const shoreScores: Record<WindShoreLabel, number> = {
+    offshore: 3,
+    'cross-off': 2.5,
+    cross: 1.5,
+    'cross-on': 0.5,
+    onshore: 0,
+  };
+  let windScore = shoreScores[shore];
+  // Extra penalty for strong wind (chop regardless of direction)
+  if (windSpeed > 25) windScore = Math.max(0, windScore - 1.5);
+  else if (windSpeed > 20) windScore = Math.max(0, windScore - 1);
+  else if (windSpeed > 15) windScore = Math.max(0, windScore - 0.5);
+
+  const raw = heightScore + periodScore + windScore; // max 10
+  return Math.max(1, Math.min(10, Math.round(raw)));
+}
+
 export type WeightRange = '45-60' | '60-75' | '75-90' | '90+';
 
 export const WEIGHT_PROFILES: { id: WeightRange; label: string }[] = [

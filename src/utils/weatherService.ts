@@ -91,6 +91,9 @@ async function fetchAemetData(spot: SpotConfig): Promise<{
         waveHeight: 0, // AEMET doesn't provide wave data, will be filled by marine API
         wavePeriod: 0,
         waveDirection: 0,
+        swellHeight: 0,
+        swellPeriod: 0,
+        swellDirection: 0,
         temperature: round1(latest.ta ?? 0),
         humidity: latest.hr ?? 0,
         waterTemperature: 0,
@@ -294,6 +297,9 @@ async function fetchOpenMeteo15min(spot: SpotConfig): Promise<{
     waveHeight: 0,
     wavePeriod: 0,
     waveDirection: 0,
+    swellHeight: 0,
+    swellPeriod: 0,
+    swellDirection: 0,
     temperature,
     humidity,
     waterTemperature: 0,
@@ -332,6 +338,9 @@ function build15minHistory(
         waveHeight: 0,
         wavePeriod: 0,
         waveDirection: 0,
+        swellHeight: 0,
+        swellPeriod: 0,
+        swellDirection: 0,
         temperature: round1(m15.temperature_2m?.[i] ?? 0),
         humidity: m15.relative_humidity_2m?.[i] ?? 0,
         waterTemperature: 0,
@@ -364,6 +373,9 @@ function build15minHistory(
         waveHeight: 0,
         wavePeriod: 0,
         waveDirection: 0,
+        swellHeight: 0,
+        swellPeriod: 0,
+        swellDirection: 0,
         temperature: round1(hourly.temperature_2m?.[i] ?? 0),
         humidity: 0,
         waterTemperature: 0,
@@ -390,22 +402,30 @@ interface OpenMeteoMarineResponse {
     wave_height?: number;
     wave_period?: number;
     wave_direction?: number;
+    swell_wave_height?: number;
+    swell_wave_period?: number;
+    swell_wave_direction?: number;
   };
 }
 
-async function fetchMarineData(spot: SpotConfig): Promise<{
+interface MarineData {
   waveHeight: number;
   wavePeriod: number;
   waveDirection: number;
-}> {
-  const defaults = { waveHeight: 0, wavePeriod: 0, waveDirection: 0 };
+  swellHeight: number;
+  swellPeriod: number;
+  swellDirection: number;
+}
+
+async function fetchMarineData(spot: SpotConfig): Promise<MarineData> {
+  const defaults: MarineData = { waveHeight: 0, wavePeriod: 0, waveDirection: 0, swellHeight: 0, swellPeriod: 0, swellDirection: 0 };
 
   try {
     const { lat, lng } = spot;
     const params = new URLSearchParams({
       latitude: lat.toString(),
       longitude: lng.toString(),
-      current: 'wave_height,wave_period,wave_direction',
+      current: 'wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction',
       timezone: 'auto',
     });
 
@@ -417,6 +437,9 @@ async function fetchMarineData(spot: SpotConfig): Promise<{
       waveHeight: c?.wave_height ?? 0,
       wavePeriod: c?.wave_period ?? 0,
       waveDirection: c?.wave_direction ?? 0,
+      swellHeight: c?.swell_wave_height ?? 0,
+      swellPeriod: c?.swell_wave_period ?? 0,
+      swellDirection: c?.swell_wave_direction ?? 0,
     };
   } catch {
     console.warn('[TarifaForever] Marine API unavailable, using defaults');
@@ -442,6 +465,9 @@ export async function fetchWeatherData(spot: SpotConfig): Promise<{
     aemet.current.waveHeight = round1(marine.waveHeight);
     aemet.current.wavePeriod = round1(marine.wavePeriod);
     aemet.current.waveDirection = marine.waveDirection;
+    aemet.current.swellHeight = round1(marine.swellHeight);
+    aemet.current.swellPeriod = round1(marine.swellPeriod);
+    aemet.current.swellDirection = marine.swellDirection;
     aemet.current.quality = calcQuality(aemet.current.windSpeed, aemet.current.windGust, marine.waveHeight);
 
     // Still fetch Open-Meteo for history
@@ -460,6 +486,9 @@ export async function fetchWeatherData(spot: SpotConfig): Promise<{
   om.current.waveHeight = round1(marine.waveHeight);
   om.current.wavePeriod = round1(marine.wavePeriod);
   om.current.waveDirection = marine.waveDirection;
+  om.current.swellHeight = round1(marine.swellHeight);
+  om.current.swellPeriod = round1(marine.swellPeriod);
+  om.current.swellDirection = marine.swellDirection;
   om.current.quality = calcQuality(om.current.windSpeed, om.current.windGust, marine.waveHeight);
 
   // Update history with marine data
@@ -467,6 +496,9 @@ export async function fetchWeatherData(spot: SpotConfig): Promise<{
     h.waveHeight = marine.waveHeight;
     h.wavePeriod = marine.wavePeriod;
     h.waveDirection = marine.waveDirection;
+    h.swellHeight = marine.swellHeight;
+    h.swellPeriod = marine.swellPeriod;
+    h.swellDirection = marine.swellDirection;
     h.quality = calcQuality(h.windSpeed, h.windGust, marine.waveHeight);
   }
 

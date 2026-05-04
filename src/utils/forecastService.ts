@@ -27,6 +27,10 @@ export interface WaveForecastHour {
   wavePeriod: number;
   waveDirection: number;
   waveDirectionLabel: string;
+  swellHeight: number;
+  swellPeriod: number;
+  swellDirection: number;
+  swellDirectionLabel: string;
 }
 
 export interface ModelForecast {
@@ -67,6 +71,9 @@ interface OpenMeteoMarineHourlyResponse {
     wave_height?: number[];
     wave_period?: number[];
     wave_direction?: number[];
+    swell_wave_height?: number[];
+    swell_wave_period?: number[];
+    swell_wave_direction?: number[];
   };
 }
 
@@ -248,7 +255,7 @@ export async function fetchWaveForecast(
     const params = new URLSearchParams({
       latitude: spot.lat.toString(),
       longitude: spot.lng.toString(),
-      hourly: 'wave_height,wave_period,wave_direction',
+      hourly: 'wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction',
       timezone: 'auto',
       forecast_days: String(Math.ceil(cutoffHours / 24) + 1),
     });
@@ -264,6 +271,7 @@ export async function fetchWaveForecast(
 
     const buildWaveHour = (i: number): WaveForecastHour => {
       const dir = h?.wave_direction?.[i] ?? 0;
+      const swellDir = h?.swell_wave_direction?.[i] ?? 0;
       return {
         time: times[i],
         hourLabel: formatHourLabel(times[i]),
@@ -273,6 +281,10 @@ export async function fetchWaveForecast(
         wavePeriod: round1(h?.wave_period?.[i] ?? 0),
         waveDirection: dir,
         waveDirectionLabel: degreesToCompass(dir),
+        swellHeight: round1(h?.swell_wave_height?.[i] ?? 0),
+        swellPeriod: round1(h?.swell_wave_period?.[i] ?? 0),
+        swellDirection: swellDir,
+        swellDirectionLabel: degreesToCompass(swellDir),
       };
     };
 
